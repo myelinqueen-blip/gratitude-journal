@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>마음 일기</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cafe24+Ssurround&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root {
@@ -29,7 +30,7 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;
+  font-family:'Cafe24 Ssurround','Pretendard',-apple-system,'Segoe UI',sans-serif;
   background:var(--bg); color:var(--text);
   min-height:100vh; -webkit-font-smoothing:antialiased;
 }
@@ -230,7 +231,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 /* ══════════════════════════════════════
    CONFIG — 여기에 본인 Google Client ID 입력
    ══════════════════════════════════════ */
-const GOOGLE_CLIENT_ID = "736639802328-lic1981807aeue572l0sjdvimi63gv4o.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
 /* ── Helpers ── */
 const now = () => new Date().toISOString();
@@ -314,29 +315,83 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+/* ═══════════════ FONT CONFIG ═══════════════ */
+const FONTS = [
+  { id:"cafe24", name:"귀여운 손글씨", family:"'Cafe24 Ssurround'", url:"https://fonts.googleapis.com/css2?family=Cafe24+Ssurround&display=swap" },
+  { id:"gowun", name:"감성 세리프", family:"'Gowun Batang'", url:"https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" },
+  { id:"square", name:"깔끔한 둥근 고딕", family:"'NanumSquareRound'", url:"https://hangeul.pstatic.net/hangeul_static/css/NanumSquareRound.css" },
+];
+
+function loadFont(fontId) {
+  const font = FONTS.find(f=>f.id===fontId);
+  if(!font) return;
+  if(!document.querySelector(`link[data-font="${fontId}"]`)) {
+    const link = document.createElement("link");
+    link.rel="stylesheet"; link.href=font.url; link.dataset.font=fontId;
+    document.head.appendChild(link);
+  }
+}
+
 /* ═══════════════ SETTINGS MODAL ═══════════════ */
-function SettingsModal({ storage, onClose }) {
+function SettingsModal({ storage, onClose, onFontChange }) {
   const [apiKey, setApiKey] = useState(storage.get("apikey") || "");
+  const [gFont, setGFont] = useState(storage.get("font_gratitude") || "cafe24");
+  const [rFont, setRFont] = useState(storage.get("font_reflection") || "cafe24");
   const [saved, setSaved] = useState(false);
 
   const save = () => {
     storage.set("apikey", apiKey);
+    storage.set("font_gratitude", gFont);
+    storage.set("font_reflection", rFont);
+    onFontChange({gratitude:gFont, reflection:rFont});
     setSaved(true);
     setTimeout(()=>setSaved(false), 1500);
+  };
+
+  const selectStyle = {
+    width:"100%", padding:"8px 10px", borderRadius:8,
+    border:"1px solid var(--border)", background:"var(--surface-warm)",
+    color:"var(--text)", fontSize:13, fontFamily:"inherit", marginBottom:4
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e=>e.stopPropagation()}>
         <div className="modal-title">설정</div>
-        <label className="modal-label">Anthropic API Key</label>
-        <input className="modal-input" type="password" value={apiKey}
-          onChange={e=>setApiKey(e.target.value)}
-          placeholder="sk-ant-..." />
-        <div className="modal-hint">
-          AI 분석 기능에 사용됩니다. 키는 본인 브라우저에만 저장되며 외부로 전송되지 않습니다.
-          <br/>anthropic.com에서 발급받을 수 있어요.
+
+        <div style={{marginBottom:20}}>
+          <label className="modal-label">Gemini API Key</label>
+          <input className="modal-input" type="password" value={apiKey}
+            onChange={e=>setApiKey(e.target.value)}
+            placeholder="AIza..." />
+          <div className="modal-hint">
+            AI 분석 기능에 사용됩니다. 키는 본인 브라우저에만 저장돼요.
+            <br/><a href="https://aistudio.google.com/apikey" target="_blank" style={{color:"var(--gold)"}}>aistudio.google.com/apikey</a> 에서 무료 발급
+          </div>
         </div>
+
+        <div style={{marginBottom:20}}>
+          <label className="modal-label">감사일기 폰트</label>
+          <select value={gFont} onChange={e=>setGFont(e.target.value)} style={selectStyle}>
+            {FONTS.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          <div style={{padding:"8px 12px",borderRadius:8,background:"var(--rose-light)",
+            fontFamily:FONTS.find(f=>f.id===gFont)?.family,fontSize:14,color:"var(--text)",lineHeight:1.6}}>
+            미리보기: 오늘도 감사한 하루였다
+          </div>
+        </div>
+
+        <div style={{marginBottom:20}}>
+          <label className="modal-label">돌아보기 폰트</label>
+          <select value={rFont} onChange={e=>setRFont(e.target.value)} style={selectStyle}>
+            {FONTS.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          <div style={{padding:"8px 12px",borderRadius:8,background:"var(--ocean-light)",
+            fontFamily:FONTS.find(f=>f.id===rFont)?.family,fontSize:14,color:"var(--text)",lineHeight:1.6}}>
+            미리보기: 내일은 더 잘할 수 있어
+          </div>
+        </div>
+
         <div className="modal-actions">
           <button className="btn-primary" style={{background:"var(--gold)"}} onClick={save}>
             {saved ? "저장됨" : "저장"}
@@ -447,7 +502,7 @@ function AISuggestions({ gEntries, rEntries, storage }) {
   const apiKey = storage.get("apikey");
 
   const analyze = async () => {
-    if(!apiKey) { alert("설정에서 Anthropic API Key를 먼저 입력해주세요."); return; }
+    if(!apiKey) { alert("설정에서 Gemini API Key를 먼저 입력해주세요."); return; }
     setLoading(true);
     try {
       const gSample=gEntries.slice(-20).map(e=>e.text).join("\n");
@@ -456,20 +511,25 @@ function AISuggestions({ gEntries, rEntries, storage }) {
       gEntries.forEach(e=>extractTags(e.text).forEach(t=>{gTags[t]=(gTags[t]||0)+1;}));
       rEntries.forEach(e=>{extractTags(e.text).forEach(t=>{rTags[t]=(rTags[t]||0)+1;});
         if(e.solution)extractTags(e.solution).forEach(t=>{rTags[t]=(rTags[t]||0)+1;});});
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
-          messages:[{role:"user",content:`따뜻하지만 담백한 마음 코치. 과하지 않게 진심으로.
+      const prompt = `따뜻하지만 담백한 마음 코치. 과하지 않게 진심으로.
 [감사] ${gSample||"(없음)"} [키워드] ${JSON.stringify(gTags)}
 [돌아보기] ${rSample||"(없음)"} [키워드] ${JSON.stringify(rTags)}
 [감사 ${gEntries.length}건, 돌아보기 ${rEntries.length}건]
-JSON만(마크다운없이):
-{"gratitude_insight":"감사 패턴 2-3문장","reflection_insight":"돌아보기 패턴 2-3문장","happiness_tips":["행복 팁3개"],"prevention_tips":["예방 팁3개"],"encouragement":"격려 한마디"}`}]})
-      });
-      if(!res.ok) throw new Error(`API ${res.status}`);
-      const data=await res.json();
-      const text=data.content?.map(c=>c.text||"").join("")||"";
+JSON만(마크다운/백틱 없이):
+{"gratitude_insight":"감사 패턴 2-3문장","reflection_insight":"돌아보기 패턴 2-3문장","happiness_tips":["행복 팁3개"],"prevention_tips":["예방 팁3개"],"encouragement":"격려 한마디"}`;
+      const models=["gemini-2.0-flash","gemini-1.5-flash"];
+      let res,data,text;
+      for(const model of models){
+        res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json"}})
+        });
+        if(res.ok) break;
+      }
+      if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||`API ${res.status}`);}
+      data=await res.json();
+      text=data.candidates?.[0]?.content?.parts?.[0]?.text||"";
       setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
     }catch(e){console.error(e);setResult({error:true,message:e.message});}
     setLoading(false);
@@ -497,7 +557,8 @@ JSON만(마크다운없이):
 
   if(result?.error) return (
     <div style={{textAlign:"center",padding:20,fontSize:12,color:"var(--text-mid)"}}>
-      문제가 생겼어요{result.message&&result.message.includes("401")?" — API Key를 확인해주세요":""}
+      문제가 생겼어요
+      {result.message&&<div style={{marginTop:6,fontSize:10,color:"var(--text-faint)",wordBreak:"break-all"}}>{result.message}</div>}
       <br/><button onClick={()=>setResult(null)} className="btn-secondary" style={{marginTop:8,fontSize:11}}>다시 시도</button>
     </div>
   );
@@ -539,42 +600,58 @@ function EntryCard({ entry, type, onDelete, onEdit }) {
   const color=isG?"var(--rose)":"var(--ocean)";
   const colorHex=isG?"#e07a6e":"#5da4c4";
   const tags=extractTags(entry.text+" "+(entry.solution||""));
+  const d=new Date(entry.createdAt);
+  const day=d.getDate();
+  const mon=d.getMonth()+1;
+  const wdShort=["일","월","화","수","목","금","토"][d.getDay()];
 
   return (
-    <div className="entry-card" style={{borderLeftColor:colorHex+"40"}}>
-      <div className="entry-meta">
-        <div className="entry-time">
-          작성 {fmtTime(entry.createdAt)}
-          {entry.updatedAt&&entry.updatedAt!==entry.createdAt&&(
-            <span style={{marginLeft:8,color:"var(--ocean-mid)"}}>· 수정 {fmtFull(entry.updatedAt)}</span>
+    <div className="entry-card" style={{borderLeftColor:colorHex+"40",display:"flex",gap:14,alignItems:"flex-start"}}>
+      {/* Date badge on left */}
+      <div style={{
+        flexShrink:0, width:48, textAlign:"center", paddingTop:2
+      }}>
+        <div style={{fontSize:9,color:colorHex,fontWeight:600,letterSpacing:"0.03em"}}>{mon}월</div>
+        <div style={{fontSize:24,fontWeight:800,color:"var(--text)",lineHeight:1.1}}>{day}</div>
+        <div style={{fontSize:10,color:"var(--text-faint)"}}>{wdShort}</div>
+      </div>
+
+      {/* Content */}
+      <div style={{flex:1,minWidth:0}}>
+        <div className="entry-meta">
+          <div className="entry-time">
+            {fmtTime(entry.createdAt)}
+            {entry.updatedAt&&entry.updatedAt!==entry.createdAt&&(
+              <span style={{marginLeft:6,color:"var(--text-faint)",opacity:0.5,fontSize:9}}>수정 {fmtFull(entry.updatedAt)}</span>
+            )}
+          </div>
+          <div className="entry-actions">
+            <button className="entry-action" onClick={()=>onEdit(entry)}>수정</button>
+            <button className="entry-action" onClick={()=>onDelete(entry.id)}>삭제</button>
+          </div>
+        </div>
+        <div className="entry-body">
+          {isG ? entry.text : (
+            <>
+              <div>{entry.text}</div>
+              {entry.solution&&(
+                <div className="entry-solution">
+                  <span className="entry-solution-label" style={{color:"var(--rose)"}}>다짐</span>
+                  <span style={{color:colorHex+"dd"}}>{entry.solution}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
-        <div className="entry-actions">
-          <button className="entry-action" onClick={()=>onEdit(entry)}>수정</button>
-          <button className="entry-action" onClick={()=>onDelete(entry.id)}>삭제</button>
-        </div>
-      </div>
-      <div className="entry-body">
-        {isG ? entry.text : (
-          <>
-            <div>{entry.text}</div>
-            {entry.solution&&(
-              <div className="entry-solution">
-                <span className="entry-solution-label" style={{color:"var(--rose)"}}>다짐</span>
-                <span style={{color:colorHex+"dd"}}>{entry.solution}</span>
-              </div>
-            )}
-          </>
+        {tags.length>0&&(
+          <div className="entry-tags">
+            {tags.map(t=><span key={t} className="entry-tag" style={{
+              background:isG?"var(--rose-light)":"var(--ocean-light)",
+              color:isG?"var(--rose)":"var(--ocean)"
+            }}>{t}</span>)}
+          </div>
         )}
       </div>
-      {tags.length>0&&(
-        <div className="entry-tags">
-          {tags.map(t=><span key={t} className="entry-tag" style={{
-            background:isG?"var(--rose-light)":"var(--ocean-light)",
-            color:isG?"var(--rose)":"var(--ocean)"
-          }}>{t}</span>)}
-        </div>
-      )}
     </div>
   );
 }
@@ -653,26 +730,48 @@ function DiaryApp({ user, onLogout }) {
   const [rText, setRText] = useState("");
   const [rSolution, setRSolution] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [gDate, setGDate] = useState("");
+  const [rDate, setRDate] = useState("");
   const [gFilter, setGFilter] = useState(null);
   const [rFilter, setRFilter] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [fonts, setFonts] = useState(()=>{
+    const g=storage.get("font_gratitude")||"cafe24";
+    const r=storage.get("font_reflection")||"cafe24";
+    return {gratitude:g, reflection:r};
+  });
+
+  // Load fonts on mount
+  useEffect(()=>{
+    FONTS.forEach(f=>loadFont(f.id));
+  },[]);
+
+  const activeFont = useMemo(()=>{
+    const id = tab==="gratitude"?fonts.gratitude:tab==="reflection"?fonts.reflection:"cafe24";
+    return FONTS.find(f=>f.id===id)?.family || "'Cafe24 Ssurround'";
+  },[tab,fonts]);
 
   const saveG = useCallback(d=>{setGEntries(d);storage.set("gratitude",d);},[storage]);
   const saveR = useCallback(d=>{setREntries(d);storage.set("reflection",d);},[storage]);
 
-  const addG=()=>{if(!gText.trim())return;if(editingId){saveG(gEntries.map(e=>e.id===editingId?{...e,text:gText,updatedAt:now()}:e));setEditingId(null);}else{saveG([{id:uuid(),text:gText,createdAt:now(),updatedAt:null},...gEntries]);}setGText("");};
-  const addR=()=>{if(!rText.trim())return;if(editingId){saveR(rEntries.map(e=>e.id===editingId?{...e,text:rText,solution:rSolution,updatedAt:now()}:e));setEditingId(null);}else{saveR([{id:uuid(),text:rText,solution:rSolution,createdAt:now(),updatedAt:null},...rEntries]);}setRText("");setRSolution("");};
+  const pickDate=(dateStr)=>{
+    if(!dateStr) return now();
+    const d=new Date(dateStr+"T"+new Date().toTimeString().slice(0,8));
+    return d.toISOString();
+  };
+  const addG=()=>{if(!gText.trim())return;if(editingId){saveG(gEntries.map(e=>e.id===editingId?{...e,text:gText,updatedAt:now()}:e));setEditingId(null);}else{const ts=pickDate(gDate);saveG([{id:uuid(),text:gText,createdAt:ts,updatedAt:null},...gEntries].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));}setGText("");setGDate("");};
+  const addR=()=>{if(!rText.trim())return;if(editingId){saveR(rEntries.map(e=>e.id===editingId?{...e,text:rText,solution:rSolution,updatedAt:now()}:e));setEditingId(null);}else{const ts=pickDate(rDate);saveR([{id:uuid(),text:rText,solution:rSolution,createdAt:ts,updatedAt:null},...rEntries].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));}setRText("");setRSolution("");setRDate("");};
   const delG=id=>saveG(gEntries.filter(e=>e.id!==id));
   const delR=id=>saveR(rEntries.filter(e=>e.id!==id));
   const edG=entry=>{setGText(entry.text);setEditingId(entry.id);};
   const edR=entry=>{setRText(entry.text);setRSolution(entry.solution||"");setEditingId(entry.id);};
-  const cancel=()=>{setEditingId(null);setGText("");setRText("");setRSolution("");};
+  const cancel=()=>{setEditingId(null);setGText("");setRText("");setRSolution("");setGDate("");setRDate("");};
 
   return (
     <div className="app">
-      {showSettings && <SettingsModal storage={storage} onClose={()=>setShowSettings(false)} />}
+      {showSettings && <SettingsModal storage={storage} onClose={()=>setShowSettings(false)} onFontChange={setFonts} />}
 
       {/* Header */}
       <header className="header">
@@ -690,7 +789,7 @@ function DiaryApp({ user, onLogout }) {
                 <div style={{padding:"10px 16px",fontSize:12,fontWeight:600,color:"var(--text)",borderBottom:"1px solid var(--border-soft)"}}>
                   {user.email}
                 </div>
-                <button className="user-menu-item" onClick={()=>{setShowSettings(true);setShowMenu(false);}}>설정 (API Key)</button>
+                <button className="user-menu-item" onClick={()=>{setShowSettings(true);setShowMenu(false);}}>설정</button>
                 <button className="user-menu-item" style={{color:"var(--rose)"}} onClick={onLogout}>로그아웃</button>
               </div>
             </>
@@ -709,7 +808,7 @@ function DiaryApp({ user, onLogout }) {
         ))}
       </nav>
 
-      <main className="fade-in" key={tab}>
+      <main className="fade-in" key={tab} style={{fontFamily:activeFont+",'Pretendard',sans-serif"}}>
         {/* GRATITUDE */}
         {tab==="gratitude"&&(
           <div>
@@ -717,6 +816,16 @@ function DiaryApp({ user, onLogout }) {
               <label className="input-label">{editingId?"수정":"오늘 감사한 것"}</label>
               <textarea className="input-textarea" value={gText} onChange={e=>setGText(e.target.value)} rows={3}
                 placeholder="따뜻했던 순간, 고마웠던 사람 — #태그로 분류해보세요"/>
+              {!editingId&&(
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+                  <label style={{fontSize:11,color:"var(--text-faint)",flexShrink:0}}>날짜</label>
+                  <input type="date" value={gDate} onChange={e=>setGDate(e.target.value)}
+                    max={new Date().toISOString().slice(0,10)}
+                    style={{padding:"5px 8px",borderRadius:6,border:"1px solid var(--border)",
+                      background:"var(--surface-warm)",color:"var(--text)",fontSize:12,fontFamily:"inherit"}}/>
+                  {!gDate&&<span style={{fontSize:10,color:"var(--text-faint)"}}>비워두면 오늘</span>}
+                </div>
+              )}
               <div style={{display:"flex",gap:8,marginTop:10}}>
                 <button className="btn-primary" style={{background:"var(--rose)"}} onClick={addG}>{editingId?"수정 완료":"기록"}</button>
                 {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
@@ -747,6 +856,16 @@ function DiaryApp({ user, onLogout }) {
               <label className="input-label" style={{marginTop:12}}>다짐</label>
               <textarea className="input-textarea" value={rSolution} onChange={e=>setRSolution(e.target.value)} rows={2}
                 placeholder="해결 방안, 구체적인 실천 계획"/>
+              {!editingId&&(
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+                  <label style={{fontSize:11,color:"var(--text-faint)",flexShrink:0}}>날짜</label>
+                  <input type="date" value={rDate} onChange={e=>setRDate(e.target.value)}
+                    max={new Date().toISOString().slice(0,10)}
+                    style={{padding:"5px 8px",borderRadius:6,border:"1px solid var(--border)",
+                      background:"var(--surface-warm)",color:"var(--text)",fontSize:12,fontFamily:"inherit"}}/>
+                  {!rDate&&<span style={{fontSize:10,color:"var(--text-faint)"}}>비워두면 오늘</span>}
+                </div>
+              )}
               <div style={{display:"flex",gap:8,marginTop:10}}>
                 <button className="btn-primary" style={{background:"var(--ocean)"}} onClick={addR}>{editingId?"수정 완료":"기록"}</button>
                 {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
