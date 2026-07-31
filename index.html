@@ -245,6 +245,37 @@ const getWeekday = iso => ["일","월","화","수","목","금","토"][new Date(i
 const getHour = iso => new Date(iso).getHours();
 const extractTags = text => [...new Set((text.match(/#[^\s#]+/g)||[]).map(t=>t.toLowerCase()))];
 const uuid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+/* ── Emotion Detection ── */
+const EMOTIONS = {
+  "기쁨": ["기쁘","행복","좋았","즐거","신나","웃었","설레","반가","뿌듯","짜릿","재밌","재미있","즐겁","기분 좋","감격","흐뭇","황홀","유쾌","통쾌","후련"],
+  "감사": ["감사","고마","고맙","감동","은혜","축복","덕분","감격","소중","귀하"],
+  "평온": ["평화","편안","안정","고요","차분","여유","느긋","잔잔","따뜻","포근","아늑"],
+  "슬픔": ["슬프","슬펐","우울","눈물","외로","쓸쓸","허전","막막","공허","서글","서러","먹먹","허무"],
+  "불안": ["불안","걱정","초조","두려","무서","겁나","긴장","조마조마","떨리","답답"],
+  "분노": ["화가","짜증","열받","빡치","억울","분하","속상","미워","원망","답답"],
+  "후회": ["후회","아쉬","미안","죄책","잘못","실수","반성","부끄"],
+  "피곤": ["피곤","지치","힘들","지겹","싫증","번아웃","녹초","기진맥진","무기력"]
+};
+
+function detectEmotions(text) {
+  const found = {};
+  Object.entries(EMOTIONS).forEach(([emotion, words]) => {
+    words.forEach(w => {
+      if(text.includes(w)) found[emotion] = (found[emotion]||0) + 1;
+    });
+  });
+  return found;
+}
+
+function analyzeEmotions(entries) {
+  const totals = {};
+  entries.forEach(e => {
+    const em = detectEmotions(e.text + " " + (e.solution||""));
+    Object.entries(em).forEach(([k,v]) => { totals[k]=(totals[k]||0)+v; });
+  });
+  return totals;
+}
 const isSameDay = (a,b) => fmtDate(a)===fmtDate(b);
 const isToday = iso => isSameDay(iso, new Date().toISOString());
 const isYesterday = iso => { const y=new Date(); y.setDate(y.getDate()-1); return isSameDay(iso,y.toISOString()); };
@@ -490,6 +521,32 @@ function Analytics({ entries, type }) {
       )}
       <div className="chart-box"><div className="chart-title">키워드</div>
         <TagCloud tags={tagCount} color={colorHex}/></div>
+
+      {/* Emotion chart */}
+      {(()=>{
+        const emotions = analyzeEmotions(entries);
+        const emEntries = Object.entries(emotions).sort((a,b)=>b[1]-a[1]);
+        if(!emEntries.length) return null;
+        const emMax = emEntries[0][1];
+        const emIcons = {"기쁨":"😊","감사":"🙏","평온":"☁️","슬픔":"🌧","불안":"😰","분노":"😤","후회":"💭","피곤":"😮‍💨"};
+        return (
+          <div className="chart-box" style={{marginTop:10}}>
+            <div className="chart-title">감정 분석</div>
+            <div style={{display:"grid",gap:6}}>
+              {emEntries.map(([em,count])=>(
+                <div key={em} style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:14,width:22,textAlign:"center"}}>{emIcons[em]||"·"}</span>
+                  <span style={{fontSize:11,color:"var(--text-mid)",width:32,flexShrink:0}}>{em}</span>
+                  <div style={{flex:1,height:8,background:"var(--border-soft)",borderRadius:4,overflow:"hidden"}}>
+                    <div style={{width:`${(count/emMax)*100}%`,height:"100%",background:colorHex,borderRadius:4,opacity:0.7,transition:"width 0.4s ease"}}/>
+                  </div>
+                  <span style={{fontSize:10,color:"var(--text-faint)",width:20,textAlign:"right"}}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -511,13 +568,15 @@ function AISuggestions({ gEntries, rEntries, storage }) {
       gEntries.forEach(e=>extractTags(e.text).forEach(t=>{gTags[t]=(gTags[t]||0)+1;}));
       rEntries.forEach(e=>{extractTags(e.text).forEach(t=>{rTags[t]=(rTags[t]||0)+1;});
         if(e.solution)extractTags(e.solution).forEach(t=>{rTags[t]=(rTags[t]||0)+1;});});
-      const prompt = `따뜻하지만 담백한 마음 코치. 과하지 않게 진심으로.
-[감사] ${gSample||"(없음)"} [키워드] ${JSON.stringify(gTags)}
-[돌아보기] ${rSample||"(없음)"} [키워드] ${JSON.stringify(rTags)}
+      const gEmotions=analyzeEmotions(gEntries);
+      const rEmotions=analyzeEmotions(rEntries);
+      const prompt = `따뜻하지만 담백한 마음 코치. 과하지 않게 진심으로. 감정 패턴도 분석에 반영해줘.
+[감사] ${gSample||"(없음)"} [키워드] ${JSON.stringify(gTags)} [감정] ${JSON.stringify(gEmotions)}
+[돌아보기] ${rSample||"(없음)"} [키워드] ${JSON.stringify(rTags)} [감정] ${JSON.stringify(rEmotions)}
 [감사 ${gEntries.length}건, 돌아보기 ${rEntries.length}건]
 JSON만(마크다운/백틱 없이):
-{"gratitude_insight":"감사 패턴 2-3문장","reflection_insight":"돌아보기 패턴 2-3문장","happiness_tips":["행복 팁3개"],"prevention_tips":["예방 팁3개"],"encouragement":"격려 한마디"}`;
-      const models=["gemini-2.0-flash","gemini-1.5-flash"];
+{"gratitude_insight":"감사 패턴과 감정 흐름 2-3문장","reflection_insight":"돌아보기 패턴과 감정 흐름 2-3문장","happiness_tips":["행복 팁3개"],"prevention_tips":["예방 팁3개"],"encouragement":"격려 한마디"}`;
+      const models=["gemini-2.5-flash-preview","gemini-3.5-flash-lite"];
       let res,data,text;
       for(const model of models){
         res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,{
@@ -622,7 +681,7 @@ function EntryCard({ entry, type, onDelete, onEdit }) {
           <div className="entry-time">
             {fmtTime(entry.createdAt)}
             {entry.updatedAt&&entry.updatedAt!==entry.createdAt&&(
-              <span style={{marginLeft:6,color:"var(--text-faint)",opacity:0.5,fontSize:9}}>수정 {fmtFull(entry.updatedAt)}</span>
+              <span style={{marginLeft:6,color:"var(--text-faint)",fontSize:9}}>수정 {fmtFull(entry.updatedAt)}</span>
             )}
           </div>
           <div className="entry-actions">
