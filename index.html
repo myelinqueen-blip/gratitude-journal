@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>마음 일기</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root {
+  --bg: #fefcf9;
+  --surface: #ffffff;
+  --surface-warm: #fefdfb;
+  --border: #ede7df;
+  --border-soft: #f4f0ea;
+  --text: #3a3330;
+  --text-mid: #8c7f72;
+  --text-faint: #c2b6a6;
+  --rose: #e07a6e;
+  --rose-light: #fdf0ed;
+  --rose-mid: #f2b8af;
+  --ocean: #5da4c4;
+  --ocean-light: #eaf4fa;
+  --ocean-mid: #a3cedf;
+  --gold: #d4a54a;
+  --gold-light: #fdf6e8;
+  --sage: #7db587;
+  --sage-light: #edf6ef;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+button { font-family:inherit; cursor:pointer; }
+button:active { transform:scale(0.98); }
+textarea { font-family:inherit; }
+textarea:focus { outline:none; border-color:var(--gold) !important; }
+::placeholder { color:var(--text-faint) !important; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+@keyframes spin { to{transform:rotate(360deg)} }
+.fade-in { animation:fadeIn 0.25s ease; }
+
+/* ── Login Screen ── */
+.login-wrap {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; min-height:100vh; padding:20px;
+  background:linear-gradient(170deg, #fefcf9 0%, #fdf6ee 50%, #fef0ed 100%);
+}
+.login-card {
+  background:var(--surface); border-radius:16px;
+  border:1px solid var(--border); padding:48px 40px;
+  text-align:center; max-width:360px; width:100%;
+  box-shadow:0 8px 40px rgba(0,0,0,0.04);
+}
+.login-card h1 { font-size:22px; font-weight:700; margin-bottom:6px; letter-spacing:-0.03em; }
+.login-card p { font-size:12px; color:var(--text-faint); margin-bottom:32px; line-height:1.6; }
+.login-dots { display:flex; gap:4px; justify-content:center; margin-bottom:20px; }
+.login-dots span { width:6px; height:6px; border-radius:50%; opacity:0.5; }
+.g-btn-wrap { display:flex; justify-content:center; }
+
+/* ── App Shell ── */
+.app { max-width:500px; margin:0 auto; padding:0 16px 80px; }
+.header { padding:24px 0 16px; display:flex; align-items:center; justify-content:space-between; }
+.header-left h1 { font-size:18px; font-weight:700; letter-spacing:-0.03em; }
+.header-left p { font-size:11px; color:var(--text-faint); margin-top:3px; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.avatar { width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border); cursor:pointer; }
+.user-menu {
+  position:absolute; right:16px; top:60px; background:var(--surface);
+  border:1px solid var(--border); border-radius:10px; padding:8px 0;
+  box-shadow:0 4px 20px rgba(0,0,0,0.08); z-index:100; min-width:200px;
+}
+.user-menu-item {
+  padding:10px 16px; font-size:12px; color:var(--text-mid);
+  border:none; background:none; width:100%; text-align:left; cursor:pointer;
+}
+.user-menu-item:hover { background:var(--border-soft); }
+
+/* ── Tabs ── */
+.tabs { display:flex; gap:0; margin-bottom:18px; border-bottom:1.5px solid var(--border); }
+.tab-btn {
+  padding:10px 14px; border:none; background:transparent;
+  font-size:13px; font-weight:400; color:var(--text-faint);
+  border-bottom:2px solid transparent; margin-bottom:-1.5px;
+  transition:all 0.2s;
+}
+.tab-btn.active { font-weight:700; }
+
+/* ── Input Area ── */
+.input-card {
+  padding:16px; border-radius:10px; background:var(--surface);
+  border:1px solid var(--border-soft); margin-bottom:14px;
+}
+.input-label { font-size:11px; font-weight:600; color:var(--text-mid); display:block; margin-bottom:8px; }
+.input-textarea {
+  width:100%; padding:12px 14px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface-warm);
+  color:var(--text); font-size:14px; line-height:1.8;
+  resize:vertical;
+}
+.btn-primary {
+  flex:1; padding:11px; border-radius:8px; border:none;
+  color:#fff; font-weight:600; font-size:13px;
+}
+.btn-secondary {
+  padding:11px 16px; border-radius:8px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text-mid); font-size:12px;
+}
+
+/* ── Date Filter ── */
+.filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.filter-pill {
+  padding:5px 12px; border-radius:20px; border:1px solid var(--border);
+  background:var(--surface); font-size:11px; font-weight:500;
+  color:var(--text-faint);
+}
+.filter-pill.active { font-weight:700; }
+
+/* ── Entry Card ── */
+.entry-card {
+  background:var(--surface); border-radius:10px;
+  border:1px solid var(--border-soft); padding:14px 16px;
+  border-left:3px solid transparent; transition:border-left-color 0.2s;
+  margin-bottom:8px;
+}
+.entry-card:hover { border-left-color:inherit; }
+.entry-meta { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.entry-time { font-size:10px; color:var(--text-faint); line-height:1.6; }
+.entry-actions { display:flex; gap:1px; flex-shrink:0; }
+.entry-action {
+  background:none; border:none; padding:2px 6px;
+  color:var(--text-faint); font-size:10px; border-radius:4px;
+}
+.entry-body { font-size:14px; line-height:1.9; white-space:pre-wrap; }
+.entry-solution {
+  margin-top:10px; padding-top:10px;
+  border-top:1px solid var(--border-soft);
+}
+.entry-solution-label {
+  font-size:9px; font-weight:700; letter-spacing:0.04em;
+  display:block; margin-bottom:4px;
+}
+.entry-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:10px; }
+.entry-tag {
+  font-size:10px; padding:2px 8px; border-radius:20px; font-weight:500;
+}
+
+/* ── Date Group ── */
+.date-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:0 2px; }
+.date-label { font-size:12px; font-weight:700; }
+.date-line { flex:1; height:1px; background:var(--border-soft); }
+.date-count { font-size:10px; color:var(--text-faint); }
+
+/* ── Analytics ── */
+.stat-row { display:flex; gap:8px; margin-bottom:10px; }
+.stat-box {
+  flex:1; text-align:center; padding:12px 4px; border-radius:10px;
+}
+.stat-value { font-size:17px; font-weight:700; }
+.stat-label { font-size:9px; color:var(--text-faint); margin-top:2px; letter-spacing:0.04em; }
+.chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.chart-box {
+  background:var(--surface); border-radius:10px; padding:12px;
+  border:1px solid var(--border-soft);
+}
+.chart-title { font-size:9px; font-weight:600; color:var(--text-faint); margin-bottom:8px; letter-spacing:0.05em; }
+.bar-wrap { display:flex; align-items:flex-end; gap:2px; height:56px; }
+.bar-col { display:flex; flex-direction:column; align-items:center; flex:1; }
+.bar-fill { width:100%; max-width:18px; border-radius:3px 3px 1px 1px; transition:height 0.4s ease; }
+.bar-label { font-size:8px; color:var(--text-faint); margin-top:3px; }
+.tag-cloud { display:flex; flex-wrap:wrap; gap:5px; }
+.tag-item { padding:3px 10px; border-radius:20px; font-size:11px; }
+
+/* ── AI Section ── */
+.ai-trigger {
+  width:100%; padding:18px; border-radius:10px;
+  border:1px dashed var(--border); background:var(--surface);
+  text-align:center;
+}
+.ai-result-card {
+  padding:14px; border-radius:10px; margin-bottom:10px;
+}
+.ai-section-label {
+  font-size:9px; font-weight:700; letter-spacing:0.05em; margin-bottom:6px;
+}
+.ai-tip {
+  font-size:12px; line-height:1.8; padding:3px 0 3px 12px;
+  margin-bottom:5px;
+}
+
+/* ── Settings Modal ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.3);
+  display:flex; align-items:center; justify-content:center;
+  z-index:200; padding:20px;
+}
+.modal-card {
+  background:var(--surface); border-radius:14px; padding:28px 24px;
+  max-width:380px; width:100%; box-shadow:0 12px 48px rgba(0,0,0,0.12);
+}
+.modal-title { font-size:15px; font-weight:700; margin-bottom:16px; }
+.modal-label { font-size:11px; font-weight:600; color:var(--text-mid); display:block; margin-bottom:6px; }
+.modal-input {
+  width:100%; padding:10px 12px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface-warm);
+  font-size:13px; color:var(--text); font-family:inherit;
+}
+.modal-input:focus { outline:none; border-color:var(--gold); }
+.modal-hint { font-size:10px; color:var(--text-faint); margin-top:4px; line-height:1.5; }
+.modal-actions { display:flex; gap:8px; margin-top:20px; }
+
+/* ── Responsive ── */
+@media (max-width:400px) {
+  .app { padding:0 12px 80px; }
+  .login-card { padding:36px 24px; }
+  .tab-btn { padding:10px 10px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+/* ══════════════════════════════════════
+   CONFIG — 여기에 본인 Google Client ID 입력
+   ══════════════════════════════════════ */
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+
+/* ── Helpers ── */
+const now = () => new Date().toISOString();
+const pad = n => String(n).padStart(2,"0");
+const fmtDate = iso => { if(!iso) return ""; const d=new Date(iso); return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`; };
+const fmtTime = iso => { if(!iso) return ""; const d=new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtFull = iso => iso ? `${fmtDate(iso)} ${fmtTime(iso)}` : "";
+const fmtMonthDay = iso => { const d=new Date(iso); return `${d.getMonth()+1}월 ${d.getDate()}일`; };
+const fmtWeekdayFull = iso => ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"][new Date(iso).getDay()];
+const getWeekday = iso => ["일","월","화","수","목","금","토"][new Date(iso).getDay()];
+const getHour = iso => new Date(iso).getHours();
+const extractTags = text => [...new Set((text.match(/#[^\s#]+/g)||[]).map(t=>t.toLowerCase()))];
+const uuid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const isSameDay = (a,b) => fmtDate(a)===fmtDate(b);
+const isToday = iso => isSameDay(iso, new Date().toISOString());
+const isYesterday = iso => { const y=new Date(); y.setDate(y.getDate()-1); return isSameDay(iso,y.toISOString()); };
+const dayLabel = iso => isToday(iso)?"오늘":isYesterday(iso)?"어제":`${fmtMonthDay(iso)} ${fmtWeekdayFull(iso)}`;
+
+/* ── Storage (localStorage, user-namespaced) ── */
+function makeStorage(userId) {
+  const prefix = `diary_${userId}_`;
+  return {
+    get: key => { try { const v=localStorage.getItem(prefix+key); return v?JSON.parse(v):null; } catch{ return null; } },
+    set: (key,val) => { try { localStorage.setItem(prefix+key,JSON.stringify(val)); } catch{} },
+    remove: key => { try { localStorage.removeItem(prefix+key); } catch{} }
+  };
+}
+
+/* ── JWT Decode (for Google credential) ── */
+function decodeJwt(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  } catch{ return null; }
+}
+
+/* ═══════════════ LOGIN SCREEN ═══════════════ */
+function LoginScreen({ onLogin }) {
+  const btnRef = useRef(null);
+
+  useEffect(() => {
+    const initGoogle = () => {
+      if (!window.google?.accounts?.id) {
+        setTimeout(initGoogle, 300);
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: response => {
+          const payload = decodeJwt(response.credential);
+          if (payload) {
+            const user = { id:payload.sub, name:payload.name, email:payload.email, picture:payload.picture };
+            localStorage.setItem("diary_current_user", JSON.stringify(user));
+            onLogin(user);
+          }
+        }
+      });
+      if (btnRef.current) {
+        google.accounts.id.renderButton(btnRef.current, {
+          theme:"outline", size:"large", shape:"pill",
+          text:"signin_with", locale:"ko", width:280
+        });
+      }
+    };
+    initGoogle();
+  }, []);
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="login-dots">
+          {["var(--rose)","var(--ocean)","var(--gold)","var(--sage)"].map((c,i) =>
+            <span key={i} style={{background:c}} />
+          )}
+        </div>
+        <h1>마음 일기</h1>
+        <p>감사와 돌아봄을 기록하는 나만의 공간</p>
+        <div className="g-btn-wrap" ref={btnRef} />
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ SETTINGS MODAL ═══════════════ */
+function SettingsModal({ storage, onClose }) {
+  const [apiKey, setApiKey] = useState(storage.get("apikey") || "");
+  const [saved, setSaved] = useState(false);
+
+  const save = () => {
+    storage.set("apikey", apiKey);
+    setSaved(true);
+    setTimeout(()=>setSaved(false), 1500);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">설정</div>
+        <label className="modal-label">Anthropic API Key</label>
+        <input className="modal-input" type="password" value={apiKey}
+          onChange={e=>setApiKey(e.target.value)}
+          placeholder="sk-ant-..." />
+        <div className="modal-hint">
+          AI 분석 기능에 사용됩니다. 키는 본인 브라우저에만 저장되며 외부로 전송되지 않습니다.
+          <br/>anthropic.com에서 발급받을 수 있어요.
+        </div>
+        <div className="modal-actions">
+          <button className="btn-primary" style={{background:"var(--gold)"}} onClick={save}>
+            {saved ? "저장됨" : "저장"}
+          </button>
+          <button className="btn-secondary" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ BAR CHART ═══════════════ */
+function BarChart({ data, color }) {
+  const max = Math.max(...data.map(d=>d.value),1);
+  return (
+    <div className="bar-wrap">
+      {data.map((d,i) => (
+        <div key={i} className="bar-col">
+          <div className="bar-fill" style={{
+            height:`${Math.max((d.value/max)*42,1)}px`,
+            background: d.value>0?color:"var(--border-soft)",
+            opacity: d.value>0?0.75:0.3
+          }} />
+          <span className="bar-label">{d.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════ TAG CLOUD ═══════════════ */
+function TagCloud({ tags, color }) {
+  const sorted = Object.entries(tags).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const max = sorted.length?sorted[0][1]:1;
+  if(!sorted.length) return <p style={{color:"var(--text-faint)",fontSize:11}}>태그를 사용하면 여기에 모여요</p>;
+  return (
+    <div className="tag-cloud">
+      {sorted.map(([tag,count])=>(
+        <span key={tag} className="tag-item" style={{
+          background: count/max>0.5?color+"18":"var(--surface-warm)",
+          color: count/max>0.5?color:"var(--text-mid)",
+          fontWeight: count/max>0.5?600:400,
+          border:`1px solid ${count/max>0.5?color+"30":"var(--border-soft)"}`
+        }}>{tag} <span style={{fontSize:8,opacity:0.5}}>{count}</span></span>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════ ANALYTICS ═══════════════ */
+function Analytics({ entries, type }) {
+  const color = type==="gratitude"?"var(--rose)":"var(--ocean)";
+  const colorHex = type==="gratitude"?"#e07a6e":"#5da4c4";
+
+  const weekdays=["월","화","수","목","금","토","일"];
+  const wdCount=Object.fromEntries(weekdays.map(w=>[w,0]));
+  entries.forEach(e=>wdCount[getWeekday(e.createdAt)]++);
+
+  const hCount=Object.fromEntries(Array.from({length:24},(_,i)=>[i,0]));
+  entries.forEach(e=>hCount[getHour(e.createdAt)]++);
+
+  const mCount={};
+  entries.forEach(e=>{const k=fmtDate(e.createdAt).slice(0,7);mCount[k]=(mCount[k]||0)+1;});
+  const months=Object.entries(mCount).sort().slice(-6);
+
+  const tagCount={};
+  entries.forEach(e=>{
+    extractTags(e.text||"").forEach(t=>{tagCount[t]=(tagCount[t]||0)+1;});
+    if(type!=="gratitude"&&e.solution) extractTags(e.solution).forEach(t=>{tagCount[t]=(tagCount[t]||0)+1;});
+  });
+
+  const dateSet=new Set(entries.map(e=>fmtDate(e.createdAt)));
+  let streak=0; const today=new Date();
+  for(let i=0;i<365;i++){const d=new Date(today);d.setDate(d.getDate()-i);
+    if(dateSet.has(`${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`))streak++;else break;}
+
+  return (
+    <div>
+      <div className="stat-row">
+        {[{l:"기록",v:entries.length},{l:"연속",v:`${streak}일`},{l:"태그",v:Object.keys(tagCount).length}].map((s,i)=>(
+          <div key={i} className="stat-box" style={{background:colorHex+"0c",border:`1px solid ${colorHex}18`}}>
+            <div className="stat-value" style={{color}}>{s.v}</div>
+            <div className="stat-label">{s.l}</div>
+          </div>
+        ))}
+      </div>
+      <div className="chart-grid">
+        <div className="chart-box"><div className="chart-title">요일별</div>
+          <BarChart data={weekdays.map(w=>({label:w,value:wdCount[w]}))} color={colorHex}/></div>
+        <div className="chart-box"><div className="chart-title">시간대</div>
+          <BarChart data={[6,9,12,15,18,21,0].map(h=>({label:`${h}시`,value:hCount[h]}))} color={colorHex}/></div>
+      </div>
+      {months.length>0&&(
+        <div className="chart-box" style={{marginBottom:10}}><div className="chart-title">월별</div>
+          <BarChart data={months.map(([m,v])=>({label:m.slice(5),value:v}))} color={colorHex}/></div>
+      )}
+      <div className="chart-box"><div className="chart-title">키워드</div>
+        <TagCloud tags={tagCount} color={colorHex}/></div>
+    </div>
+  );
+}
+
+/* ═══════════════ AI SUGGESTIONS ═══════════════ */
+function AISuggestions({ gEntries, rEntries, storage }) {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const total = gEntries.length+rEntries.length;
+  const apiKey = storage.get("apikey");
+
+  const analyze = async () => {
+    if(!apiKey) { alert("설정에서 Anthropic API Key를 먼저 입력해주세요."); return; }
+    setLoading(true);
+    try {
+      const gSample=gEntries.slice(-20).map(e=>e.text).join("\n");
+      const rSample=rEntries.slice(-20).map(e=>`${e.text} / ${e.solution||""}`).join("\n");
+      const gTags={},rTags={};
+      gEntries.forEach(e=>extractTags(e.text).forEach(t=>{gTags[t]=(gTags[t]||0)+1;}));
+      rEntries.forEach(e=>{extractTags(e.text).forEach(t=>{rTags[t]=(rTags[t]||0)+1;});
+        if(e.solution)extractTags(e.solution).forEach(t=>{rTags[t]=(rTags[t]||0)+1;});});
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+          messages:[{role:"user",content:`따뜻하지만 담백한 마음 코치. 과하지 않게 진심으로.
+[감사] ${gSample||"(없음)"} [키워드] ${JSON.stringify(gTags)}
+[돌아보기] ${rSample||"(없음)"} [키워드] ${JSON.stringify(rTags)}
+[감사 ${gEntries.length}건, 돌아보기 ${rEntries.length}건]
+JSON만(마크다운없이):
+{"gratitude_insight":"감사 패턴 2-3문장","reflection_insight":"돌아보기 패턴 2-3문장","happiness_tips":["행복 팁3개"],"prevention_tips":["예방 팁3개"],"encouragement":"격려 한마디"}`}]})
+      });
+      if(!res.ok) throw new Error(`API ${res.status}`);
+      const data=await res.json();
+      const text=data.content?.map(c=>c.text||"").join("")||"";
+      setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    }catch(e){console.error(e);setResult({error:true,message:e.message});}
+    setLoading(false);
+  };
+
+  if(!result&&!loading) return (
+    <button className="ai-trigger" onClick={analyze} disabled={total===0}
+      style={{opacity:total>0?1:0.5,cursor:total>0?"pointer":"default",
+        borderColor:total>0&&apiKey?"var(--gold)":"var(--border)",
+        background:total>0?"var(--gold-light)":"var(--surface)"}}>
+      <div style={{fontSize:13,fontWeight:600,color:total>0?"var(--gold)":"var(--text-faint)"}}>
+        {apiKey?"내 기록 들여다보기":"설정에서 API Key를 입력하면 AI 분석을 사용할 수 있어요"}
+      </div>
+      {total>0&&apiKey&&<div style={{fontSize:11,color:"var(--text-faint)",marginTop:3}}>기록을 바탕으로 나만의 패턴을 찾아드려요</div>}
+    </button>
+  );
+
+  if(loading) return (
+    <div style={{textAlign:"center",padding:36,color:"var(--text-mid)"}}>
+      <div style={{width:20,height:20,border:"2px solid var(--border)",borderTopColor:"var(--gold)",
+        borderRadius:"50%",animation:"spin 0.7s linear infinite",margin:"0 auto 10px"}}/>
+      <div style={{fontSize:12}}>읽고 있어요</div>
+    </div>
+  );
+
+  if(result?.error) return (
+    <div style={{textAlign:"center",padding:20,fontSize:12,color:"var(--text-mid)"}}>
+      문제가 생겼어요{result.message&&result.message.includes("401")?" — API Key를 확인해주세요":""}
+      <br/><button onClick={()=>setResult(null)} className="btn-secondary" style={{marginTop:8,fontSize:11}}>다시 시도</button>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="ai-result-card" style={{background:"var(--gold-light)",borderLeft:"3px solid var(--gold)",
+        fontSize:13,color:"var(--text)",lineHeight:1.8,fontWeight:500}}>{result.encouragement}</div>
+
+      <div className="chart-grid">
+        <div className="ai-result-card" style={{background:"var(--rose-light)"}}>
+          <div className="ai-section-label" style={{color:"var(--rose)"}}>감사 패턴</div>
+          <div style={{fontSize:12,lineHeight:1.8}}>{result.gratitude_insight}</div>
+        </div>
+        <div className="ai-result-card" style={{background:"var(--ocean-light)"}}>
+          <div className="ai-section-label" style={{color:"var(--ocean)"}}>돌아보기 패턴</div>
+          <div style={{fontSize:12,lineHeight:1.8}}>{result.reflection_insight}</div>
+        </div>
+      </div>
+
+      <div className="ai-result-card" style={{background:"var(--surface)",border:"1px solid var(--border-soft)"}}>
+        <div className="ai-section-label" style={{color:"var(--rose)"}}>더 행복해지는 법</div>
+        {result.happiness_tips?.map((t,i)=><div key={i} className="ai-tip" style={{borderLeft:"2px solid var(--rose-mid)"}}>{t}</div>)}
+      </div>
+      <div className="ai-result-card" style={{background:"var(--surface)",border:"1px solid var(--border-soft)"}}>
+        <div className="ai-section-label" style={{color:"var(--ocean)"}}>같은 실수 줄이기</div>
+        {result.prevention_tips?.map((t,i)=><div key={i} className="ai-tip" style={{borderLeft:"2px solid var(--ocean-mid)"}}>{t}</div>)}
+      </div>
+      <div style={{textAlign:"center"}}>
+        <button onClick={()=>setResult(null)} className="btn-secondary" style={{fontSize:10}}>다시 분석</button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ ENTRY CARD ═══════════════ */
+function EntryCard({ entry, type, onDelete, onEdit }) {
+  const isG=type==="gratitude";
+  const color=isG?"var(--rose)":"var(--ocean)";
+  const colorHex=isG?"#e07a6e":"#5da4c4";
+  const tags=extractTags(entry.text+" "+(entry.solution||""));
+
+  return (
+    <div className="entry-card" style={{borderLeftColor:colorHex+"40"}}>
+      <div className="entry-meta">
+        <div className="entry-time">
+          작성 {fmtTime(entry.createdAt)}
+          {entry.updatedAt&&entry.updatedAt!==entry.createdAt&&(
+            <span style={{marginLeft:8,color:"var(--ocean-mid)"}}>· 수정 {fmtFull(entry.updatedAt)}</span>
+          )}
+        </div>
+        <div className="entry-actions">
+          <button className="entry-action" onClick={()=>onEdit(entry)}>수정</button>
+          <button className="entry-action" onClick={()=>onDelete(entry.id)}>삭제</button>
+        </div>
+      </div>
+      <div className="entry-body">
+        {isG ? entry.text : (
+          <>
+            <div>{entry.text}</div>
+            {entry.solution&&(
+              <div className="entry-solution">
+                <span className="entry-solution-label" style={{color:"var(--rose)"}}>다짐</span>
+                <span style={{color:colorHex+"dd"}}>{entry.solution}</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {tags.length>0&&(
+        <div className="entry-tags">
+          {tags.map(t=><span key={t} className="entry-tag" style={{
+            background:isG?"var(--rose-light)":"var(--ocean-light)",
+            color:isG?"var(--rose)":"var(--ocean)"
+          }}>{t}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════ GROUPED LIST ═══════════════ */
+function GroupedEntries({ entries, type, onDelete, onEdit, filter }) {
+  const filtered=useMemo(()=>filter?entries.filter(e=>fmtDate(e.createdAt).startsWith(filter)):entries,[entries,filter]);
+  const groups=useMemo(()=>{
+    const g={};filtered.forEach(e=>{const k=fmtDate(e.createdAt);if(!g[k])g[k]=[];g[k].push(e);});
+    return Object.entries(g).sort((a,b)=>b[0].localeCompare(a[0]));
+  },[filtered]);
+
+  if(!filtered.length&&entries.length>0) return <p style={{textAlign:"center",padding:28,color:"var(--text-faint)",fontSize:12}}>이 기간에 기록이 없어요</p>;
+  if(!filtered.length) return <p style={{textAlign:"center",padding:36,color:"var(--text-faint)",fontSize:13}}>아직 기록이 없어요</p>;
+
+  return (
+    <div>
+      {groups.map(([date,items])=>(
+        <div key={date} style={{marginBottom:18}}>
+          <div className="date-header">
+            <span className="date-label" style={{color:isToday(items[0].createdAt)?"var(--rose)":"var(--text-mid)"}}>{dayLabel(items[0].createdAt)}</span>
+            <div className="date-line"/>
+            <span className="date-count">{items.length}건</span>
+          </div>
+          {items.map(e=><EntryCard key={e.id} entry={e} type={type} onDelete={onDelete} onEdit={onEdit}/>)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════ DATE FILTER ═══════════════ */
+function DateFilter({ entries, filter, setFilter }) {
+  const months=useMemo(()=>{
+    const m={};entries.forEach(e=>{const k=fmtDate(e.createdAt).slice(0,7);m[k]=(m[k]||0)+1;});
+    return Object.entries(m).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
+  },[entries]);
+  if(!months.length) return null;
+
+  return (
+    <div className="filter-bar">
+      <button className={`filter-pill ${!filter?"active":""}`} onClick={()=>setFilter(null)}
+        style={!filter?{borderColor:"var(--rose)",background:"var(--rose-light)",color:"var(--rose)"}:{}}>전체</button>
+      {months.map(([m,c])=>{
+        const active=filter===m;
+        return <button key={m} className={`filter-pill ${active?"active":""}`} onClick={()=>setFilter(active?null:m)}
+          style={active?{borderColor:"var(--ocean)",background:"var(--ocean-light)",color:"var(--ocean)"}:{}}>
+          {m.slice(5)}월 <span style={{fontSize:9,opacity:0.6}}>{c}</span>
+        </button>;
+      })}
+    </div>
+  );
+}
+
+/* ═══════════════ MAIN APP ═══════════════ */
+function App() {
+  const [user, setUser] = useState(()=>{
+    try{return JSON.parse(localStorage.getItem("diary_current_user"));}catch{return null;}
+  });
+
+  if(!user) return <LoginScreen onLogin={setUser}/>;
+
+  return <DiaryApp user={user} onLogout={()=>{
+    localStorage.removeItem("diary_current_user");
+    google?.accounts?.id?.disableAutoSelect();
+    setUser(null);
+  }}/>;
+}
+
+function DiaryApp({ user, onLogout }) {
+  const storage = useMemo(()=>makeStorage(user.id),[user.id]);
+  const [tab, setTab] = useState("gratitude");
+  const [gEntries, setGEntries] = useState(()=>storage.get("gratitude")||[]);
+  const [rEntries, setREntries] = useState(()=>storage.get("reflection")||[]);
+  const [gText, setGText] = useState("");
+  const [rText, setRText] = useState("");
+  const [rSolution, setRSolution] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [gFilter, setGFilter] = useState(null);
+  const [rFilter, setRFilter] = useState(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const saveG = useCallback(d=>{setGEntries(d);storage.set("gratitude",d);},[storage]);
+  const saveR = useCallback(d=>{setREntries(d);storage.set("reflection",d);},[storage]);
+
+  const addG=()=>{if(!gText.trim())return;if(editingId){saveG(gEntries.map(e=>e.id===editingId?{...e,text:gText,updatedAt:now()}:e));setEditingId(null);}else{saveG([{id:uuid(),text:gText,createdAt:now(),updatedAt:null},...gEntries]);}setGText("");};
+  const addR=()=>{if(!rText.trim())return;if(editingId){saveR(rEntries.map(e=>e.id===editingId?{...e,text:rText,solution:rSolution,updatedAt:now()}:e));setEditingId(null);}else{saveR([{id:uuid(),text:rText,solution:rSolution,createdAt:now(),updatedAt:null},...rEntries]);}setRText("");setRSolution("");};
+  const delG=id=>saveG(gEntries.filter(e=>e.id!==id));
+  const delR=id=>saveR(rEntries.filter(e=>e.id!==id));
+  const edG=entry=>{setGText(entry.text);setEditingId(entry.id);};
+  const edR=entry=>{setRText(entry.text);setRSolution(entry.solution||"");setEditingId(entry.id);};
+  const cancel=()=>{setEditingId(null);setGText("");setRText("");setRSolution("");};
+
+  return (
+    <div className="app">
+      {showSettings && <SettingsModal storage={storage} onClose={()=>setShowSettings(false)} />}
+
+      {/* Header */}
+      <header className="header">
+        <div className="header-left">
+          <h1>마음 일기</h1>
+          <p>{user.name}님의 공간</p>
+        </div>
+        <div className="header-right" style={{position:"relative"}}>
+          <img className="avatar" src={user.picture} alt="" referrerPolicy="no-referrer"
+            onClick={()=>setShowMenu(!showMenu)} />
+          {showMenu && (
+            <>
+              <div style={{position:"fixed",inset:0,zIndex:99}} onClick={()=>setShowMenu(false)} />
+              <div className="user-menu">
+                <div style={{padding:"10px 16px",fontSize:12,fontWeight:600,color:"var(--text)",borderBottom:"1px solid var(--border-soft)"}}>
+                  {user.email}
+                </div>
+                <button className="user-menu-item" onClick={()=>{setShowSettings(true);setShowMenu(false);}}>설정 (API Key)</button>
+                <button className="user-menu-item" style={{color:"var(--rose)"}} onClick={onLogout}>로그아웃</button>
+              </div>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <nav className="tabs">
+        {[{key:"gratitude",label:"감사",color:"var(--rose)"},{key:"reflection",label:"돌아보기",color:"var(--ocean)"},{key:"insights",label:"기록 모아보기",color:"var(--gold)"}].map(t=>(
+          <button key={t.key} className={`tab-btn ${tab===t.key?"active":""}`}
+            onClick={()=>{setTab(t.key);cancel();setShowAnalytics(false);}}
+            style={tab===t.key?{color:t.color,borderBottomColor:t.color}:{}}>
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="fade-in" key={tab}>
+        {/* GRATITUDE */}
+        {tab==="gratitude"&&(
+          <div>
+            <div className="input-card">
+              <label className="input-label">{editingId?"수정":"오늘 감사한 것"}</label>
+              <textarea className="input-textarea" value={gText} onChange={e=>setGText(e.target.value)} rows={3}
+                placeholder="따뜻했던 순간, 고마웠던 사람 — #태그로 분류해보세요"/>
+              <div style={{display:"flex",gap:8,marginTop:10}}>
+                <button className="btn-primary" style={{background:"var(--rose)"}} onClick={addG}>{editingId?"수정 완료":"기록"}</button>
+                {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
+              </div>
+            </div>
+            {gEntries.length>0&&(
+              <button className="filter-pill" onClick={()=>setShowAnalytics(!showAnalytics)}
+                style={{width:"100%",textAlign:"center",marginBottom:14,
+                  background:showAnalytics?"var(--rose-light)":"var(--surface)",
+                  color:showAnalytics?"var(--rose)":"var(--text-faint)",
+                  borderColor:showAnalytics?"var(--rose)":"var(--border)"}}>
+                {showAnalytics?"닫기":"기록 모아보기"}
+              </button>
+            )}
+            {showAnalytics&&<div style={{marginBottom:14}}><Analytics entries={gEntries} type="gratitude"/></div>}
+            <DateFilter entries={gEntries} filter={gFilter} setFilter={setGFilter}/>
+            <GroupedEntries entries={gEntries} type="gratitude" onDelete={delG} onEdit={edG} filter={gFilter}/>
+          </div>
+        )}
+
+        {/* REFLECTION */}
+        {tab==="reflection"&&(
+          <div>
+            <div className="input-card">
+              <label className="input-label">{editingId?"수정":"오늘 돌아볼 것"}</label>
+              <textarea className="input-textarea" value={rText} onChange={e=>setRText(e.target.value)} rows={3}
+                placeholder="아쉬웠던 점, 고치고 싶은 습관 — #태그로 분류"/>
+              <label className="input-label" style={{marginTop:12}}>다짐</label>
+              <textarea className="input-textarea" value={rSolution} onChange={e=>setRSolution(e.target.value)} rows={2}
+                placeholder="해결 방안, 구체적인 실천 계획"/>
+              <div style={{display:"flex",gap:8,marginTop:10}}>
+                <button className="btn-primary" style={{background:"var(--ocean)"}} onClick={addR}>{editingId?"수정 완료":"기록"}</button>
+                {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
+              </div>
+            </div>
+            <DateFilter entries={rEntries} filter={rFilter} setFilter={setRFilter}/>
+            <GroupedEntries entries={rEntries} type="reflection" onDelete={delR} onEdit={edR} filter={rFilter}/>
+          </div>
+        )}
+
+        {/* INSIGHTS */}
+        {tab==="insights"&&(
+          <div>
+            <AISuggestions gEntries={gEntries} rEntries={rEntries} storage={storage}/>
+            {gEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--rose)",marginBottom:12}}>감사 기록</div><Analytics entries={gEntries} type="gratitude"/></div>)}
+            {rEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--ocean)",marginBottom:12}}>돌아보기 기록</div><Analytics entries={rEntries} type="reflection"/></div>)}
+            {gEntries.length===0&&rEntries.length===0&&(<p style={{textAlign:"center",padding:48,color:"var(--text-faint)",fontSize:13}}>기록이 쌓이면 여기서 패턴을 볼 수 있어요</p>)}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
