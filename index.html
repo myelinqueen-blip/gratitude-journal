@@ -156,11 +156,10 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 /* ── Tabs ── */
 .tabs { display:flex; margin-bottom:18px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
 .tab-btn {
-  flex:1; padding:9px 4px; border:none; border-right:1px solid var(--border-soft);
+  flex:1; padding:9px 4px; border:none;
   background:transparent; font-size:12px; font-weight:500; color:var(--text-faint);
   transition:all 0.2s;
 }
-.tab-btn:last-child { border-right:none; }
 .tab-btn.active { font-weight:700; color:var(--text); background:var(--surface-warm); }
 
 /* ── Input Area ── */
@@ -276,12 +275,13 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 /* ── Settings Modal ── */
 .modal-overlay {
   position:fixed; inset:0; background:rgba(0,0,0,0.3);
-  display:flex; align-items:center; justify-content:center;
-  z-index:200; padding:20px;
+  display:flex; align-items:flex-start; justify-content:center;
+  z-index:200; padding:32px 16px; overflow-y:auto;
 }
 .modal-card {
   background:var(--surface); border-radius:14px; padding:28px 24px;
   max-width:380px; width:100%; box-shadow:0 12px 48px rgba(0,0,0,0.12);
+  max-height:calc(100vh - 64px); overflow-y:auto;
 }
 .modal-title { font-size:15px; font-weight:700; margin-bottom:16px; }
 .modal-label { font-size:11px; font-weight:600; color:var(--text-mid); display:block; margin-bottom:6px; }
@@ -299,13 +299,16 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
   .app { padding:0 12px 80px; }
   .login-card { padding:36px 24px; }
   .tab-btn { padding:10px 10px; font-size:12px; }
-  .title-img { height:38px; }
-  .header-right { gap:5px !important; }
-  .icon-btn { width:22px; height:22px; font-size:14px; }
-  .avatar { width:24px; height:24px; }
+  .title-img { height:34px; }
+  .header-right { gap:4px !important; }
+  .icon-bar { gap:4px; }
+  .icon-btn { width:20px; height:20px; font-size:13px; }
+  .avatar { width:22px; height:22px; }
+  .header { gap:4px; }
 }
 @media (max-width:340px) {
-  .title-img { height:32px; }
+  .title-img { height:28px; }
+  .icon-btn { width:18px; height:18px; }
 }
 </style>
 </head>
@@ -353,6 +356,18 @@ function saveEntriesToCloud(uid, key, arr) {
   const obj = {};
   arr.forEach(e => { obj[e.id] = e; });
   return entriesRef(uid, key).set(obj);
+}
+
+/* ── Settings sync (apikey, fonts) — cloud so it's the same on every device ── */
+function settingsRef(uid) { return rtdb.ref(`${DB_ROOT}/${uid}/settings`); }
+function subscribeSettings(uid, callback) {
+  const ref = settingsRef(uid);
+  const handler = snap => callback(snap.val() || {});
+  ref.on("value", handler);
+  return () => ref.off("value", handler);
+}
+function saveSettingsToCloud(uid, partial) {
+  return settingsRef(uid).update(partial);
 }
 
 /* ── Helpers ── */
@@ -556,22 +571,19 @@ function loadFont(fontId) {
 }
 
 /* ═══════════════ SETTINGS MODAL ═══════════════ */
-function SettingsModal({ storage, onClose, onFontChange }) {
-  const [apiKey, setApiKey] = useState(storage.get("apikey") || "");
-  const [gFont, setGFont] = useState(storage.get("font_gratitude") || "cafe24");
-  const [rFont, setRFont] = useState(storage.get("font_reflection") || "cafe24");
+function SettingsModal({ storage, apiKey: initialApiKey, fonts: initialFonts, onSave, onClose }) {
+  const [apiKey, setApiKey] = useState(initialApiKey || "");
+  const [gFont, setGFont] = useState(initialFonts?.gratitude || "cafe24");
+  const [rFont, setRFont] = useState(initialFonts?.reflection || "cafe24");
   const [saved, setSaved] = useState(false);
   const usage = useMemo(()=>getStorageUsageBytes(storage._userId),[storage]);
   const usageMB = (usage/1024/1024).toFixed(2);
   const usagePct = Math.min((usage/(5*1024*1024))*100, 100);
 
   const save = () => {
-    storage.set("apikey", apiKey);
-    storage.set("font_gratitude", gFont);
-    storage.set("font_reflection", rFont);
-    onFontChange({gratitude:gFont, reflection:rFont});
-    setSaved(true);
-    setTimeout(()=>setSaved(false), 1500);
+    onSave({ apikey: apiKey, font_gratitude: gFont, font_reflection: rFont })
+      .then(()=>{ setSaved(true); setTimeout(()=>setSaved(false), 1500); })
+      .catch(()=>{ alert("저장에 실패했어요. 인터넷 연결을 확인해주세요."); });
   };
 
   const selectStyle = {
@@ -591,7 +603,7 @@ function SettingsModal({ storage, onClose, onFontChange }) {
             onChange={e=>setApiKey(e.target.value)}
             placeholder="AIza..." />
           <div className="modal-hint">
-            AI 분석 기능에 사용됩니다. 키는 본인 브라우저에만 저장돼요.
+            AI 분석 기능에 사용돼요. 내 계정에만 저장되고, 기기 간 자동으로 동기화돼요.
             <br/><a href="https://aistudio.google.com/apikey" target="_blank" style={{color:"var(--gold)"}}>aistudio.google.com/apikey</a> 에서 무료 발급
           </div>
         </div>
@@ -767,11 +779,10 @@ function Analytics({ entries, type }) {
 }
 
 /* ═══════════════ AI SUGGESTIONS ═══════════════ */
-function AISuggestions({ gEntries, rEntries, storage }) {
+function AISuggestions({ gEntries, rEntries, apiKey }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const total = gEntries.length+rEntries.length;
-  const apiKey = storage.get("apikey");
 
   const analyze = async () => {
     if(!apiKey) { alert("설정에서 Gemini API Key를 먼저 입력해주세요."); return; }
@@ -1108,6 +1119,7 @@ function DiaryApp({ user, onLogout }) {
     const r=storage.get("font_reflection")||"cafe24";
     return {gratitude:g, reflection:r};
   });
+  const [apiKey, setApiKey] = useState(()=>storage.get("apikey")||"");
 
   useEffect(()=>{ FONTS.forEach(f=>loadFont(f.id)); },[]);
 
@@ -1115,14 +1127,25 @@ function DiaryApp({ user, onLogout }) {
   useEffect(() => {
     setSyncing(true);
     let loaded = 0;
-    const checkLoaded = () => { loaded++; if(loaded>=2) setSyncing(false); };
+    const checkLoaded = () => { loaded++; if(loaded>=3) setSyncing(false); };
     const unsubG = subscribeEntries(user.id, "gratitude", arr => {
       setGEntries(arr); storage.set("gratitude", arr); checkLoaded();
     });
     const unsubR = subscribeEntries(user.id, "reflection", arr => {
       setREntries(arr); storage.set("reflection", arr); checkLoaded();
     });
-    return () => { unsubG(); unsubR(); };
+    const unsubS = subscribeSettings(user.id, s => {
+      if (s.font_gratitude || s.font_reflection) {
+        const g = s.font_gratitude || "cafe24", r = s.font_reflection || "cafe24";
+        setFonts({gratitude:g, reflection:r});
+        storage.set("font_gratitude", g); storage.set("font_reflection", r);
+      }
+      if (s.apikey !== undefined) {
+        setApiKey(s.apikey); storage.set("apikey", s.apikey);
+      }
+      checkLoaded();
+    });
+    return () => { unsubG(); unsubR(); unsubS(); };
   }, [user.id]);
 
   const activeFont = useMemo(()=>{
@@ -1132,6 +1155,16 @@ function DiaryApp({ user, onLogout }) {
 
   const saveG = useCallback(d=>{setGEntries(d);storage.set("gratitude",d);saveEntriesToCloud(user.id,"gratitude",d).catch(console.error);},[storage,user.id]);
   const saveR = useCallback(d=>{setREntries(d);storage.set("reflection",d);saveEntriesToCloud(user.id,"reflection",d).catch(console.error);},[storage,user.id]);
+
+  const saveSettings = useCallback((partial)=>{
+    if(partial.font_gratitude || partial.font_reflection){
+      setFonts(f=>({gratitude:partial.font_gratitude||f.gratitude, reflection:partial.font_reflection||f.reflection}));
+    }
+    if(partial.apikey !== undefined) setApiKey(partial.apikey);
+    Object.entries(partial).forEach(([k,v])=>storage.set(k,v));
+    return saveSettingsToCloud(user.id, partial);
+  },[storage,user.id]);
+
 
   const pickDate=(dateStr)=>{
     if(!dateStr) return now();
@@ -1202,7 +1235,7 @@ function DiaryApp({ user, onLogout }) {
 
   return (
     <div className="app">
-      {showSettings && <SettingsModal storage={storage} onClose={()=>setShowSettings(false)} onFontChange={setFonts} />}
+      {showSettings && <SettingsModal storage={storage} apiKey={apiKey} fonts={fonts} onSave={saveSettings} onClose={()=>setShowSettings(false)} />}
 
       {/* Header */}
       <header className="header">
@@ -1339,7 +1372,7 @@ function DiaryApp({ user, onLogout }) {
         {/* INSIGHTS */}
         {tab==="insights"&&(
           <div>
-            <AISuggestions gEntries={gEntries} rEntries={rEntries} storage={storage}/>
+            <AISuggestions gEntries={gEntries} rEntries={rEntries} apiKey={apiKey}/>
             {gEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--rose)",marginBottom:12}}>감사 기록</div><Analytics entries={gEntries} type="gratitude"/></div>)}
             {rEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--ocean-dark)",marginBottom:12}}>다짐 기록</div><Analytics entries={rEntries} type="reflection"/></div>)}
             {gEntries.length===0&&rEntries.length===0&&(<p style={{textAlign:"center",padding:48,color:"var(--text-faint)",fontSize:13}}>기록이 쌓이면 여기서 패턴을 볼 수 있어요</p>)}
