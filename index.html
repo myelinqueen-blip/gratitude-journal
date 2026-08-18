@@ -154,13 +154,14 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 .user-menu-item:hover { background:var(--border-soft); }
 
 /* ── Tabs ── */
-.tabs { display:flex; gap:8px; margin-bottom:18px; }
+.tabs { display:flex; margin-bottom:18px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
 .tab-btn {
-  flex:1; padding:13px 8px; border:1.5px solid var(--border); border-radius:12px;
-  background:var(--surface); font-size:14px; font-weight:600; color:var(--text-mid);
+  flex:1; padding:9px 4px; border:none; border-right:1px solid var(--border-soft);
+  background:transparent; font-size:12px; font-weight:500; color:var(--text-faint);
   transition:all 0.2s;
 }
-.tab-btn.active { font-weight:800; border-width:2px; }
+.tab-btn:last-child { border-right:none; }
+.tab-btn.active { font-weight:700; color:var(--text); background:var(--surface-warm); }
 
 /* ── Input Area ── */
 .input-card {
@@ -214,7 +215,7 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
   background:none; border:none; padding:2px 6px;
   color:var(--text-faint); font-size:10px; border-radius:4px;
 }
-.entry-body { font-size:14px; line-height:1.9; white-space:pre-wrap; }
+.entry-body { font-size:13px; line-height:1.7; white-space:pre-wrap; }
 .entry-solution {
   margin-top:10px; padding-top:10px;
   border-top:1px solid var(--border-soft);
@@ -886,11 +887,17 @@ function DateNav({ date, setDate, color }) {
 }
 
 /* ═══════════════ BACKUP BAR (icon only) ═══════════════ */
-function BackupBar({ storage, userName, onImported }) {
+function BackupBar({ storage, userName, onImported, onForceSave }) {
   const fileRef = useRef(null);
+  const [saved, setSaved] = useState(false);
 
   const handleExport = () => exportBackup(storage, userName);
   const handleImportClick = () => fileRef.current?.click();
+  const handleSave = () => {
+    onForceSave();
+    setSaved(true);
+    setTimeout(()=>setSaved(false), 1200);
+  };
   const handleFile = async e => {
     const file = e.target.files[0];
     if(!file) return;
@@ -904,11 +911,18 @@ function BackupBar({ storage, userName, onImported }) {
 
   return (
     <div className="icon-bar">
-      <button className="icon-btn" title="백업 다운로드" onClick={handleExport}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <button className="icon-btn" title="저장" onClick={handleSave}>
+        {saved ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--sage)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        )}
       </button>
       <button className="icon-btn" title="백업 불러오기" onClick={handleImportClick}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button className="icon-btn" title="백업 다운로드" onClick={handleExport}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
       </button>
       <input ref={fileRef} type="file" accept="application/json" style={{display:"none"}} onChange={handleFile}/>
     </div>
@@ -931,9 +945,9 @@ function EntryCard({ entry, type, onDelete, onEdit }) {
       {/* Compact date header — full width reclaimed for body below */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         <div style={{display:"flex",alignItems:"baseline",gap:5,minWidth:0}}>
-          <span style={{fontSize:19,fontWeight:800,color:"var(--text)",lineHeight:1}}>{day}</span>
-          <span style={{fontSize:11,fontWeight:700,color:colorHex,flexShrink:0}}>{mon}월 {wdShort}</span>
-          <span style={{fontSize:10,color:"var(--text-faint)",flexShrink:0}}>{fmtTime(entry.createdAt)}</span>
+          <span style={{fontSize:17,fontWeight:800,color:"var(--text)",lineHeight:1}}>{day}</span>
+          <span style={{fontSize:10,fontWeight:700,color:colorHex,flexShrink:0}}>{mon}월 {wdShort}</span>
+          <span style={{fontSize:9,color:"var(--text-faint)",flexShrink:0}}>{fmtTime(entry.createdAt)}</span>
         </div>
         <div className="entry-actions" style={{flexShrink:0}}>
           <button className="entry-action" onClick={()=>onEdit(entry)}>수정</button>
@@ -1197,7 +1211,7 @@ function DiaryApp({ user, onLogout }) {
           {!syncing && <span title="동기화됨" style={{width:6,height:6,borderRadius:"50%",background:"var(--sage)",flexShrink:0}}/>}
         </div>
         <div className="header-right" style={{position:"relative",display:"flex",alignItems:"center",gap:8}}>
-          <BackupBar storage={storage} userName={user.name} onImported={handleImported}/>
+          <BackupBar storage={storage} userName={user.name} onImported={handleImported} onForceSave={()=>{saveEntriesToCloud(user.id,"gratitude",gEntries).catch(console.error);saveEntriesToCloud(user.id,"reflection",rEntries).catch(console.error);}}/>
           <img className="avatar" src={user.picture} alt="" referrerPolicy="no-referrer"
             onClick={()=>setShowMenu(!showMenu)} />
           {showMenu && (
@@ -1220,7 +1234,7 @@ function DiaryApp({ user, onLogout }) {
         {tabList.map(t=>(
           <button key={t.key} className={`tab-btn ${tab===t.key?"active":""}`}
             onClick={()=>{setTab(t.key);cancel();setShowAnalytics(false);}}
-            style={tab===t.key?{color:t.color,background:t.bg,borderColor:t.border}:{}}>
+            style={tab===t.key?{boxShadow:`inset 0 -2px 0 ${t.border}`}:{}}>
             {t.label}
           </button>
         ))}
