@@ -6,7 +6,9 @@
 <title>마음 일기</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Cafe24+Ssurround&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 :root {
   --bg: #fefcf9;
@@ -316,9 +318,42 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 /* ══════════════════════════════════════
-   CONFIG — 여기에 본인 Google Client ID 입력
+   FIREBASE CONFIG — shinshim-diary 프로젝트 공용
+   마음 일기는 maeumDiary/{uid}/... 경로만 사용 (다른 앱과 분리)
    ══════════════════════════════════════ */
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const firebaseConfig = {
+  apiKey: "AIzaSyAvtgUROy9sqe4mnjcb3HV4TzRQ6bXsCQA",
+  authDomain: "shinshim-diary.firebaseapp.com",
+  databaseURL: "https://shinshim-diary-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "shinshim-diary",
+  storageBucket: "shinshim-diary.firebasestorage.app",
+  messagingSenderId: "736639802328",
+  appId: "1:736639802328:web:1a8dabc364c22af453f0ad"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const rtdb = firebase.database();
+const DB_ROOT = "maeumDiary"; // 마음 일기 전용 최상위 경로 — 신심 일기(users/...)와 절대 겹치지 않음
+
+/* ── Cloud sync helpers (Realtime Database) ── */
+function entriesRef(uid, key) {
+  return rtdb.ref(`${DB_ROOT}/${uid}/${key}`);
+}
+function subscribeEntries(uid, key, callback) {
+  const ref = entriesRef(uid, key);
+  const handler = snap => {
+    const val = snap.val() || {};
+    const arr = Object.values(val).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+    callback(arr);
+  };
+  ref.on("value", handler);
+  return () => ref.off("value", handler);
+}
+function saveEntriesToCloud(uid, key, arr) {
+  const obj = {};
+  arr.forEach(e => { obj[e.id] = e; });
+  return entriesRef(uid, key).set(obj);
+}
 
 /* ── Helpers ── */
 const now = () => new Date().toISOString();
@@ -457,44 +492,24 @@ function makeStorage(userId) {
   };
 }
 
-/* ── JWT Decode (for Google credential) ── */
-function decodeJwt(token) {
-  try {
-    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-  } catch{ return null; }
-}
-
 /* ═══════════════ LOGIN SCREEN ═══════════════ */
-function LoginScreen({ onLogin }) {
-  const btnRef = useRef(null);
+function LoginScreen() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const initGoogle = () => {
-      if (!window.google?.accounts?.id) {
-        setTimeout(initGoogle, 300);
-        return;
-      }
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: response => {
-          const payload = decodeJwt(response.credential);
-          if (payload) {
-            const user = { id:payload.sub, name:payload.name, email:payload.email, picture:payload.picture };
-            localStorage.setItem("diary_current_user", JSON.stringify(user));
-            onLogin(user);
-          }
-        }
-      });
-      if (btnRef.current) {
-        google.accounts.id.renderButton(btnRef.current, {
-          theme:"outline", size:"large", shape:"pill",
-          text:"signin_with", locale:"ko", width:280
-        });
-      }
-    };
-    initGoogle();
-  }, []);
+  const handleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await auth.signInWithPopup(provider);
+      // onAuthStateChanged in App() picks up the result automatically
+    } catch (e) {
+      console.error(e);
+      setError(e.code === "auth/popup-blocked" ? "팝업이 차단됐어요. 브라우저 팝업 허용 후 다시 시도해주세요." : "로그인에 실패했어요. 다시 시도해주세요.");
+    }
+    setLoading(false);
+  };
 
   return (
     <div className="login-wrap">
@@ -505,8 +520,19 @@ function LoginScreen({ onLogin }) {
           )}
         </div>
         <h1>마음 일기</h1>
-        <p>감사와 돌아봄을 기록하는 나만의 공간</p>
-        <div className="g-btn-wrap" ref={btnRef} />
+        <p>감사와 돌아봄을 기록하는 나만의 공간<br/>기기 간 자동으로 동기화돼요</p>
+        <div className="g-btn-wrap">
+          <button onClick={handleLogin} disabled={loading} style={{
+            display:"flex", alignItems:"center", gap:10, padding:"11px 24px",
+            borderRadius:24, border:"1px solid var(--border)", background:"#fff",
+            fontSize:14, fontWeight:600, color:"var(--text)", cursor:"pointer",
+            opacity: loading?0.6:1
+          }}>
+            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34 6 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.4 18.9 12 24 12c3.1 0 5.8 1.1 8 3l6-6C34 6 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.5 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.2 5.2C40.9 36 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+            {loading?"로그인 중...":"Google 계정으로 로그인"}
+          </button>
+        </div>
+        {error && <p style={{color:"var(--rose)",fontSize:11,marginTop:12}}>{error}</p>}
       </div>
     </div>
   );
@@ -1016,17 +1042,31 @@ function DateFilter({ entries, filter, setFilter, color }) {
 
 /* ═══════════════ MAIN APP ═══════════════ */
 function App() {
-  const [user, setUser] = useState(()=>{
-    try{return JSON.parse(localStorage.getItem("diary_current_user"));}catch{return null;}
-  });
+  const [user, setUser] = useState(undefined); // undefined = checking, null = logged out, object = logged in
+  const [authError, setAuthError] = useState(null);
 
-  if(!user) return <LoginScreen onLogin={setUser}/>;
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(fbUser => {
+      if (fbUser) {
+        setUser({ id: fbUser.uid, name: fbUser.displayName, email: fbUser.email, picture: fbUser.photoURL });
+      } else {
+        setUser(null);
+      }
+    }, err => { console.error(err); setAuthError(err.message); setUser(null); });
+    return () => unsub();
+  }, []);
 
-  return <DiaryApp user={user} onLogout={()=>{
-    localStorage.removeItem("diary_current_user");
-    google?.accounts?.id?.disableAutoSelect();
-    setUser(null);
-  }}/>;
+  if (user === undefined) {
+    return (
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"var(--text-faint)",fontSize:13}}>
+        불러오는 중...
+      </div>
+    );
+  }
+
+  if (!user) return <LoginScreen/>;
+
+  return <DiaryApp user={user} onLogout={()=>{ auth.signOut(); }}/>;
 }
 
 function DiaryApp({ user, onLogout }) {
@@ -1034,6 +1074,7 @@ function DiaryApp({ user, onLogout }) {
   const [tab, setTab] = useState("gratitude");
   const [gEntries, setGEntries] = useState(()=>storage.get("gratitude")||[]);
   const [rEntries, setREntries] = useState(()=>storage.get("reflection")||[]);
+  const [syncing, setSyncing] = useState(true);
   const [gText, setGText] = useState("");
   const [rText, setRText] = useState("");
   const [rSolution, setRSolution] = useState("");
@@ -1058,13 +1099,27 @@ function DiaryApp({ user, onLogout }) {
 
   useEffect(()=>{ FONTS.forEach(f=>loadFont(f.id)); },[]);
 
+  // Real-time cloud sync — subscribes to Firebase, mirrors to localStorage for offline/backup
+  useEffect(() => {
+    setSyncing(true);
+    let loaded = 0;
+    const checkLoaded = () => { loaded++; if(loaded>=2) setSyncing(false); };
+    const unsubG = subscribeEntries(user.id, "gratitude", arr => {
+      setGEntries(arr); storage.set("gratitude", arr); checkLoaded();
+    });
+    const unsubR = subscribeEntries(user.id, "reflection", arr => {
+      setREntries(arr); storage.set("reflection", arr); checkLoaded();
+    });
+    return () => { unsubG(); unsubR(); };
+  }, [user.id]);
+
   const activeFont = useMemo(()=>{
     const id = tab==="gratitude"?fonts.gratitude:tab==="reflection"?fonts.reflection:"cafe24";
     return FONTS.find(f=>f.id===id)?.family || "'Cafe24 Ssurround'";
   },[tab,fonts]);
 
-  const saveG = useCallback(d=>{setGEntries(d);storage.set("gratitude",d);},[storage]);
-  const saveR = useCallback(d=>{setREntries(d);storage.set("reflection",d);},[storage]);
+  const saveG = useCallback(d=>{setGEntries(d);storage.set("gratitude",d);saveEntriesToCloud(user.id,"gratitude",d).catch(console.error);},[storage,user.id]);
+  const saveR = useCallback(d=>{setREntries(d);storage.set("reflection",d);saveEntriesToCloud(user.id,"reflection",d).catch(console.error);},[storage,user.id]);
 
   const pickDate=(dateStr)=>{
     if(!dateStr) return now();
@@ -1139,8 +1194,9 @@ function DiaryApp({ user, onLogout }) {
 
       {/* Header */}
       <header className="header">
-        <div className="header-left">
+        <div className="header-left" style={{display:"flex",alignItems:"center",gap:8}}>
           <img src="title.png" alt="마음 일기" className="title-img"/>
+          {!syncing && <span title="동기화됨" style={{width:6,height:6,borderRadius:"50%",background:"var(--sage)",flexShrink:0}}/>}
         </div>
         <div className="header-right" style={{position:"relative",display:"flex",alignItems:"center",gap:8}}>
           <BackupBar storage={storage} userName={user.name} onImported={handleImported}/>
