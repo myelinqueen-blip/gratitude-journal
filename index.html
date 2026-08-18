@@ -223,10 +223,11 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
   font-size:9px; font-weight:700; letter-spacing:0.04em;
   display:block; margin-bottom:4px;
 }
-.entry-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+.entry-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:16px; }
 .entry-tag {
   font-size:10px; padding:3px 10px; border-radius:20px; font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  font-family:'Pretendard',-apple-system,sans-serif; line-height:1.4;
 }
 
 /* ── Date Group ── */
@@ -309,6 +310,16 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 @media (max-width:340px) {
   .title-img { height:28px; }
   .icon-btn { width:18px; height:18px; }
+}
+/* ── Font scoping: decorative diary fonts apply ONLY to written entry text.
+   Small UI elements (tags, buttons, labels, dates) always stay in the clean
+   default font — some decorative fonts render oddly / overlap at small sizes. ── */
+.tabs, .tab-btn, .icon-bar, .icon-btn, .date-nav, .date-nav-label, .date-nav-today,
+.filter-pill, .entry-tag, .tag-preview-pill, .btn-primary, .btn-secondary, .entry-action,
+.modal-card, .stat-value, .stat-label, .chart-title, .input-label, .tag-input, .tag-input-row,
+.entry-time, .entry-meta, .date-header, .date-label, .date-count, select, .header-left p,
+.user-menu-item, .avatar, h1 {
+  font-family:'Pretendard',-apple-system,sans-serif !important;
 }
 </style>
 </head>
@@ -954,7 +965,7 @@ function EntryCard({ entry, type, onDelete, onEdit }) {
   return (
     <div className="entry-card" style={{borderLeftColor:colorHex+"40"}}>
       {/* Compact date header — full width reclaimed for body below */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+      <div className="entry-date-header" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,fontFamily:"'Pretendard',-apple-system,sans-serif"}}>
         <div style={{display:"flex",alignItems:"baseline",gap:5,minWidth:0}}>
           <span style={{fontSize:17,fontWeight:800,color:"var(--text)",lineHeight:1}}>{day}</span>
           <span style={{fontSize:10,fontWeight:700,color:colorHex,flexShrink:0}}>{mon}월 {wdShort}</span>
