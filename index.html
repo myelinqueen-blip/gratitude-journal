@@ -27,6 +27,7 @@
   --gold-light: #fdf6e8;
   --sage: #7db587;
   --sage-light: #edf6ef;
+  --ocean-dark: #2b6e8f;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -42,6 +43,63 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
 @keyframes spin { to{transform:rotate(360deg)} }
 .fade-in { animation:fadeIn 0.25s ease; }
+
+/* ── Date Nav ── */
+.date-nav {
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  margin-bottom:14px; padding:10px 8px;
+  background:var(--surface); border-radius:12px; border:1px solid var(--border-soft);
+}
+.date-nav-arrow {
+  width:28px; height:28px; border-radius:50%; border:1px solid var(--border);
+  background:var(--surface-warm); color:var(--text-mid); font-size:14px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.date-nav-arrow:disabled { opacity:0.3; cursor:default; }
+.date-nav-label { font-size:15px; font-weight:800; min-width:96px; text-align:center; }
+.date-nav-today {
+  padding:5px 12px; border-radius:20px; border:1px solid var(--border);
+  background:var(--surface-warm); color:var(--text-mid); font-size:11px; font-weight:600;
+  flex-shrink:0;
+}
+.date-nav-today.is-today { opacity:0.4; }
+
+/* ── Tag Input ── */
+.tag-input-row { display:flex; align-items:center; gap:6px; margin-top:8px; }
+.tag-input {
+  flex:1; padding:9px 12px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface-warm);
+  color:var(--text); font-size:12px; font-family:inherit;
+}
+.tag-preview { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.tag-preview-pill { font-size:10px; padding:3px 9px; border-radius:20px; font-weight:600; }
+
+/* ── Backup Bar ── */
+.backup-bar { display:flex; gap:6px; margin-bottom:12px; }
+.backup-btn {
+  flex:1; padding:8px 6px; border-radius:10px; border:1px dashed var(--border);
+  background:var(--surface); color:var(--text-mid); font-size:11px; font-weight:600;
+  display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.storage-bar-track {
+  width:100%; height:5px; background:var(--border-soft); border-radius:3px; overflow:hidden; margin-top:4px;
+}
+.storage-bar-fill { height:100%; border-radius:3px; transition:width 0.3s ease; }
+
+/* ── Image Upload ── */
+.image-add-btn {
+  padding:9px 14px; border-radius:8px; border:1px dashed var(--border);
+  background:var(--surface-warm); color:var(--text-faint); font-size:11px; font-weight:600;
+  display:flex; align-items:center; gap:5px;
+}
+.image-preview-wrap { position:relative; display:inline-block; margin-top:8px; }
+.image-preview { width:64px; height:64px; border-radius:8px; object-fit:cover; border:1px solid var(--border); }
+.image-remove-btn {
+  position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
+  background:var(--rose); color:#fff; border:2px solid var(--surface); font-size:10px;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+}
+.entry-image { width:100%; max-width:220px; border-radius:10px; margin-top:10px; display:block; border:1px solid var(--border-soft); }
 
 /* ── Login Screen ── */
 .login-wrap {
@@ -143,9 +201,10 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
   font-size:9px; font-weight:700; letter-spacing:0.04em;
   display:block; margin-bottom:4px;
 }
-.entry-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:10px; }
+.entry-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
 .entry-tag {
-  font-size:10px; padding:2px 8px; border-radius:20px; font-weight:500;
+  font-size:10px; padding:3px 10px; border-radius:20px; font-weight:600;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
 
 /* ── Date Group ── */
@@ -246,6 +305,84 @@ const getHour = iso => new Date(iso).getHours();
 const extractTags = text => [...new Set((text.match(/#[^\s#]+/g)||[]).map(t=>t.toLowerCase()))];
 const uuid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 
+/* ── Tag input parsing (comma-separated, no # required) ── */
+function parseTagInput(str) {
+  return [...new Set(str.split(",").map(t=>t.trim()).filter(Boolean).map(t=>t.startsWith("#")?t:"#"+t).map(t=>t.toLowerCase()))];
+}
+function mergeTagsIntoText(text, tagInputStr) {
+  if(!tagInputStr.trim()) return text;
+  const existing = new Set(extractTags(text));
+  const newTags = parseTagInput(tagInputStr).filter(t=>!existing.has(t));
+  if(!newTags.length) return text;
+  return text.trimEnd() + " " + newTags.join(" ");
+}
+
+/* ── Date navigation helpers ── */
+const toDateInput = iso => { const d=new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const todayInput = () => toDateInput(new Date().toISOString());
+const shiftDateInput = (dateStr, days) => { const d=new Date(dateStr+"T12:00:00"); d.setDate(d.getDate()+days); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const fmtNavLabel = dateStr => { const d=new Date(dateStr+"T12:00:00"); const wd=["일","월","화","수","목","금","토"][d.getDay()]; return `${d.getMonth()+1}/${d.getDate()}(${wd})`; };
+
+/* ── Image compression (keeps localStorage small) ── */
+function compressImage(file, maxDim=480, quality=0.6) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w=img.width, h=img.height;
+        if(w>h && w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}
+        else if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+        const canvas=document.createElement("canvas");
+        canvas.width=w; canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── Storage usage estimate ── */
+function getStorageUsageBytes(userId) {
+  let total = 0;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k && k.startsWith(`diary_${userId}_`)) total += (localStorage.getItem(k)||"").length;
+  }
+  return total;
+}
+
+/* ── Export / Import ── */
+function exportBackup(storage, userName) {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    gratitude: storage.get("gratitude")||[],
+    reflection: storage.get("reflection")||[],
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const ymd = new Date().toISOString().slice(0,10).replace(/-/g,"");
+  a.href = url; a.download = `마음일기_백업_${ymd}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(file) {
+  return new Promise((resolve,reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try { resolve(JSON.parse(e.target.result)); } catch(err){ reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
 /* ── Emotion Detection ── */
 const EMOTIONS = {
   "기쁨": ["기쁘","행복","좋았","즐거","신나","웃었","설레","반가","뿌듯","짜릿","재밌","재미있","즐겁","기분 좋","감격","흐뭇","황홀","유쾌","통쾌","후련"],
@@ -285,6 +422,7 @@ const dayLabel = iso => isToday(iso)?"오늘":isYesterday(iso)?"어제":`${fmtMo
 function makeStorage(userId) {
   const prefix = `diary_${userId}_`;
   return {
+    _userId: userId,
     get: key => { try { const v=localStorage.getItem(prefix+key); return v?JSON.parse(v):null; } catch{ return null; } },
     set: (key,val) => { try { localStorage.setItem(prefix+key,JSON.stringify(val)); } catch{} },
     remove: key => { try { localStorage.removeItem(prefix+key); } catch{} }
@@ -413,7 +551,7 @@ function SettingsModal({ storage, onClose, onFontChange }) {
         </div>
 
         <div style={{marginBottom:20}}>
-          <label className="modal-label">돌아보기 폰트</label>
+          <label className="modal-label">다짐 폰트</label>
           <select value={rFont} onChange={e=>setRFont(e.target.value)} style={selectStyle}>
             {FONTS.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
@@ -633,7 +771,7 @@ JSON만(마크다운/백틱 없이):
           <div style={{fontSize:12,lineHeight:1.8}}>{result.gratitude_insight}</div>
         </div>
         <div className="ai-result-card" style={{background:"var(--ocean-light)"}}>
-          <div className="ai-section-label" style={{color:"var(--ocean)"}}>돌아보기 패턴</div>
+          <div className="ai-section-label" style={{color:"var(--ocean-dark)"}}>다짐 패턴</div>
           <div style={{fontSize:12,lineHeight:1.8}}>{result.reflection_insight}</div>
         </div>
       </div>
@@ -643,11 +781,64 @@ JSON만(마크다운/백틱 없이):
         {result.happiness_tips?.map((t,i)=><div key={i} className="ai-tip" style={{borderLeft:"2px solid var(--rose-mid)"}}>{t}</div>)}
       </div>
       <div className="ai-result-card" style={{background:"var(--surface)",border:"1px solid var(--border-soft)"}}>
-        <div className="ai-section-label" style={{color:"var(--ocean)"}}>같은 실수 줄이기</div>
-        {result.prevention_tips?.map((t,i)=><div key={i} className="ai-tip" style={{borderLeft:"2px solid var(--ocean-mid)"}}>{t}</div>)}
+        <div className="ai-section-label" style={{color:"var(--ocean-dark)"}}>같은 실수 줄이기</div>
+        {result.prevention_tips?.map((t,i)=><div key={i} className="ai-tip" style={{borderLeft:"2px solid var(--ocean-dark)"}}>{t}</div>)}
       </div>
       <div style={{textAlign:"center"}}>
         <button onClick={()=>setResult(null)} className="btn-secondary" style={{fontSize:10}}>다시 분석</button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ DATE NAV ═══════════════ */
+function DateNav({ date, setDate, color }) {
+  const isToday = date === todayInput();
+  return (
+    <div className="date-nav">
+      <button className="date-nav-arrow" onClick={()=>setDate(shiftDateInput(date,-1))}>‹</button>
+      <span className="date-nav-label" style={{color}}>{fmtNavLabel(date)}</span>
+      <button className="date-nav-arrow" disabled={isToday} onClick={()=>setDate(shiftDateInput(date,1))}>›</button>
+      <button className={`date-nav-today ${isToday?"is-today":""}`} onClick={()=>setDate(todayInput())}>오늘</button>
+    </div>
+  );
+}
+
+/* ═══════════════ BACKUP BAR ═══════════════ */
+function BackupBar({ storage, userName, onImported }) {
+  const fileRef = useRef(null);
+  const [usage, setUsage] = useState(0);
+
+  useEffect(()=>{ setUsage(getStorageUsageBytes(storage._userId)); },[storage]);
+
+  const handleExport = () => exportBackup(storage, userName);
+  const handleImportClick = () => fileRef.current?.click();
+  const handleFile = async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try {
+      const data = await importBackup(file);
+      if(!confirm(`백업 파일을 불러올까요?\n감사 ${data.gratitude?.length||0}건, 다짐 ${data.reflection?.length||0}건\n\n현재 데이터에 추가됩니다 (덮어쓰지 않음).`)) return;
+      onImported(data);
+    } catch(err) { alert("파일을 읽을 수 없어요. 올바른 백업 파일인지 확인해주세요."); }
+    e.target.value = "";
+  };
+
+  const usageMB = (usage/1024/1024).toFixed(2);
+  const usagePct = Math.min((usage/(5*1024*1024))*100, 100);
+
+  return (
+    <div style={{marginBottom:14}}>
+      <div className="backup-bar">
+        <button className="backup-btn" onClick={handleExport}>⬇ 백업 다운로드</button>
+        <button className="backup-btn" onClick={handleImportClick}>⬆ 백업 불러오기</button>
+        <input ref={fileRef} type="file" accept="application/json" style={{display:"none"}} onChange={handleFile}/>
+      </div>
+      <div style={{padding:"0 4px"}}>
+        <div className="storage-bar-track">
+          <div className="storage-bar-fill" style={{width:`${usagePct}%`, background: usagePct>80?"var(--rose)":"var(--sage)"}}/>
+        </div>
+        <div style={{fontSize:9,color:"var(--text-faint)",marginTop:3}}>저장 용량 {usageMB}MB 사용 중 (기기당 약 5MB 한도)</div>
       </div>
     </div>
   );
@@ -681,7 +872,7 @@ function EntryCard({ entry, type, onDelete, onEdit }) {
           <div className="entry-time">
             {fmtTime(entry.createdAt)}
             {entry.updatedAt&&entry.updatedAt!==entry.createdAt&&(
-              <span style={{marginLeft:6,color:"var(--text-faint)",fontSize:9}}>수정 {fmtFull(entry.updatedAt)}</span>
+              <span style={{marginLeft:6,color:"var(--text-mid)",fontWeight:600,fontSize:9}}>수정 {fmtFull(entry.updatedAt)}</span>
             )}
           </div>
           <div className="entry-actions">
@@ -695,13 +886,14 @@ function EntryCard({ entry, type, onDelete, onEdit }) {
               <div>{entry.text}</div>
               {entry.solution&&(
                 <div className="entry-solution">
-                  <span className="entry-solution-label" style={{color:"var(--rose)"}}>다짐</span>
-                  <span style={{color:colorHex+"dd"}}>{entry.solution}</span>
+                  <span className="entry-solution-label" style={{color:"var(--ocean-dark)"}}>다짐</span>
+                  <span style={{color:"var(--ocean-dark)"}}>{entry.solution}</span>
                 </div>
               )}
             </>
           )}
         </div>
+        {entry.image && <img className="entry-image" src={entry.image} alt=""/>}
         {tags.length>0&&(
           <div className="entry-tags">
             {tags.map(t=><span key={t} className="entry-tag" style={{
@@ -788,9 +980,14 @@ function DiaryApp({ user, onLogout }) {
   const [gText, setGText] = useState("");
   const [rText, setRText] = useState("");
   const [rSolution, setRSolution] = useState("");
+  const [gTagInput, setGTagInput] = useState("");
+  const [rTagInput, setRTagInput] = useState("");
+  const [gImage, setGImage] = useState(null);
+  const [rImage, setRImage] = useState(null);
+  const [imgLoading, setImgLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [gDate, setGDate] = useState("");
-  const [rDate, setRDate] = useState("");
+  const [gSelectedDate, setGSelectedDate] = useState(todayInput());
+  const [rSelectedDate, setRSelectedDate] = useState(todayInput());
   const [gFilter, setGFilter] = useState(null);
   const [rFilter, setRFilter] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
@@ -802,10 +999,7 @@ function DiaryApp({ user, onLogout }) {
     return {gratitude:g, reflection:r};
   });
 
-  // Load fonts on mount
-  useEffect(()=>{
-    FONTS.forEach(f=>loadFont(f.id));
-  },[]);
+  useEffect(()=>{ FONTS.forEach(f=>loadFont(f.id)); },[]);
 
   const activeFont = useMemo(()=>{
     const id = tab==="gratitude"?fonts.gratitude:tab==="reflection"?fonts.reflection:"cafe24";
@@ -820,13 +1014,67 @@ function DiaryApp({ user, onLogout }) {
     const d=new Date(dateStr+"T"+new Date().toTimeString().slice(0,8));
     return d.toISOString();
   };
-  const addG=()=>{if(!gText.trim())return;if(editingId){saveG(gEntries.map(e=>e.id===editingId?{...e,text:gText,updatedAt:now()}:e));setEditingId(null);}else{const ts=pickDate(gDate);saveG([{id:uuid(),text:gText,createdAt:ts,updatedAt:null},...gEntries].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));}setGText("");setGDate("");};
-  const addR=()=>{if(!rText.trim())return;if(editingId){saveR(rEntries.map(e=>e.id===editingId?{...e,text:rText,solution:rSolution,updatedAt:now()}:e));setEditingId(null);}else{const ts=pickDate(rDate);saveR([{id:uuid(),text:rText,solution:rSolution,createdAt:ts,updatedAt:null},...rEntries].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));}setRText("");setRSolution("");setRDate("");};
+
+  const handleImageSelect = async (e, setImg) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    setImgLoading(true);
+    try { setImg(await compressImage(file)); } catch { alert("이미지를 불러오지 못했어요."); }
+    setImgLoading(false);
+    e.target.value = "";
+  };
+
+  const addG=()=>{
+    if(!gText.trim())return;
+    const finalText = mergeTagsIntoText(gText, gTagInput);
+    if(editingId){
+      saveG(gEntries.map(e=>e.id===editingId?{...e,text:finalText,image:gImage!==undefined?gImage:e.image,updatedAt:now()}:e));
+      setEditingId(null);
+    } else {
+      const ts=pickDate(gSelectedDate);
+      saveG([{id:uuid(),text:finalText,image:gImage,createdAt:ts,updatedAt:null},...gEntries].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));
+    }
+    setGText("");setGTagInput("");setGImage(null);
+  };
+  const addR=()=>{
+    if(!rText.trim())return;
+    const finalText = mergeTagsIntoText(rText, rTagInput);
+    if(editingId){
+      saveR(rEntries.map(e=>e.id===editingId?{...e,text:finalText,solution:rSolution,image:rImage!==undefined?rImage:e.image,updatedAt:now()}:e));
+      setEditingId(null);
+    } else {
+      const ts=pickDate(rSelectedDate);
+      saveR([{id:uuid(),text:finalText,solution:rSolution,image:rImage,createdAt:ts,updatedAt:null},...rEntries].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));
+    }
+    setRText("");setRSolution("");setRTagInput("");setRImage(null);
+  };
   const delG=id=>saveG(gEntries.filter(e=>e.id!==id));
   const delR=id=>saveR(rEntries.filter(e=>e.id!==id));
-  const edG=entry=>{setGText(entry.text);setEditingId(entry.id);};
-  const edR=entry=>{setRText(entry.text);setRSolution(entry.solution||"");setEditingId(entry.id);};
-  const cancel=()=>{setEditingId(null);setGText("");setRText("");setRSolution("");setGDate("");setRDate("");};
+  const edG=entry=>{setGText(entry.text);setGImage(entry.image||null);setEditingId(entry.id);};
+  const edR=entry=>{setRText(entry.text);setRSolution(entry.solution||"");setRImage(entry.image||null);setEditingId(entry.id);};
+  const cancel=()=>{setEditingId(null);setGText("");setRText("");setRSolution("");setGTagInput("");setRTagInput("");setGImage(null);setRImage(null);};
+
+  const handleImported = (data) => {
+    if(Array.isArray(data.gratitude) && data.gratitude.length){
+      const existingIds = new Set(gEntries.map(e=>e.id));
+      const merged = [...gEntries, ...data.gratitude.filter(e=>!existingIds.has(e.id))]
+        .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+      saveG(merged);
+    }
+    if(Array.isArray(data.reflection) && data.reflection.length){
+      const existingIds = new Set(rEntries.map(e=>e.id));
+      const merged = [...rEntries, ...data.reflection.filter(e=>!existingIds.has(e.id))]
+        .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+      saveR(merged);
+    }
+    alert("백업을 불러왔어요.");
+  };
+
+  const tabList = [
+    {key:"gratitude",label:"감사",color:"var(--rose)"},
+    {key:"reflection",label:"다짐",color:"var(--ocean-dark)"},
+    {key:"insights",label:"인사이트",color:"var(--gold)"}
+  ];
 
   return (
     <div className="app">
@@ -856,9 +1104,12 @@ function DiaryApp({ user, onLogout }) {
         </div>
       </header>
 
+      {/* Backup bar — visible on every tab */}
+      <BackupBar storage={storage} userName={user.name} onImported={handleImported}/>
+
       {/* Tabs */}
       <nav className="tabs">
-        {[{key:"gratitude",label:"감사",color:"var(--rose)"},{key:"reflection",label:"돌아보기",color:"var(--ocean)"},{key:"insights",label:"기록 모아보기",color:"var(--gold)"}].map(t=>(
+        {tabList.map(t=>(
           <button key={t.key} className={`tab-btn ${tab===t.key?"active":""}`}
             onClick={()=>{setTab(t.key);cancel();setShowAnalytics(false);}}
             style={tab===t.key?{color:t.color,borderBottomColor:t.color}:{}}>
@@ -871,20 +1122,36 @@ function DiaryApp({ user, onLogout }) {
         {/* GRATITUDE */}
         {tab==="gratitude"&&(
           <div>
+            {!editingId && <DateNav date={gSelectedDate} setDate={setGSelectedDate} color="var(--rose)"/>}
             <div className="input-card">
               <label className="input-label">{editingId?"수정":"오늘 감사한 것"}</label>
               <textarea className="input-textarea" value={gText} onChange={e=>setGText(e.target.value)} rows={3}
-                placeholder="따뜻했던 순간, 고마웠던 사람 — #태그로 분류해보세요"/>
-              {!editingId&&(
-                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
-                  <label style={{fontSize:11,color:"var(--text-faint)",flexShrink:0}}>날짜</label>
-                  <input type="date" value={gDate} onChange={e=>setGDate(e.target.value)}
-                    max={new Date().toISOString().slice(0,10)}
-                    style={{padding:"5px 8px",borderRadius:6,border:"1px solid var(--border)",
-                      background:"var(--surface-warm)",color:"var(--text)",fontSize:12,fontFamily:"inherit"}}/>
-                  {!gDate&&<span style={{fontSize:10,color:"var(--text-faint)"}}>비워두면 오늘</span>}
+                placeholder="따뜻했던 순간, 고마웠던 사람"/>
+              <div className="tag-input-row">
+                <input className="tag-input" value={gTagInput} onChange={e=>setGTagInput(e.target.value)}
+                  placeholder="태그 (쉼표로 구분, 예: 가족, 감사, 여행)"/>
+              </div>
+              {gTagInput.trim() && (
+                <div className="tag-preview">
+                  {parseTagInput(gTagInput).map(t=>(
+                    <span key={t} className="tag-preview-pill" style={{background:"var(--rose-light)",color:"var(--rose)"}}>{t}</span>
+                  ))}
                 </div>
               )}
+              <div style={{marginTop:10}}>
+                {!gImage ? (
+                  <label className="image-add-btn">
+                    📷 사진 추가
+                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImageSelect(e,setGImage)}/>
+                  </label>
+                ) : (
+                  <div className="image-preview-wrap">
+                    <img className="image-preview" src={gImage} alt=""/>
+                    <button className="image-remove-btn" onClick={()=>setGImage(null)}>×</button>
+                  </div>
+                )}
+                {imgLoading && <span style={{fontSize:10,color:"var(--text-faint)",marginLeft:8}}>압축 중...</span>}
+              </div>
               <div style={{display:"flex",gap:8,marginTop:10}}>
                 <button className="btn-primary" style={{background:"var(--rose)"}} onClick={addG}>{editingId?"수정 완료":"기록"}</button>
                 {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
@@ -905,28 +1172,44 @@ function DiaryApp({ user, onLogout }) {
           </div>
         )}
 
-        {/* REFLECTION */}
+        {/* REFLECTION (다짐) */}
         {tab==="reflection"&&(
           <div>
+            {!editingId && <DateNav date={rSelectedDate} setDate={setRSelectedDate} color="var(--ocean-dark)"/>}
             <div className="input-card">
               <label className="input-label">{editingId?"수정":"오늘 돌아볼 것"}</label>
               <textarea className="input-textarea" value={rText} onChange={e=>setRText(e.target.value)} rows={3}
-                placeholder="아쉬웠던 점, 고치고 싶은 습관 — #태그로 분류"/>
+                placeholder="아쉬웠던 점, 고치고 싶은 습관"/>
               <label className="input-label" style={{marginTop:12}}>다짐</label>
               <textarea className="input-textarea" value={rSolution} onChange={e=>setRSolution(e.target.value)} rows={2}
                 placeholder="해결 방안, 구체적인 실천 계획"/>
-              {!editingId&&(
-                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
-                  <label style={{fontSize:11,color:"var(--text-faint)",flexShrink:0}}>날짜</label>
-                  <input type="date" value={rDate} onChange={e=>setRDate(e.target.value)}
-                    max={new Date().toISOString().slice(0,10)}
-                    style={{padding:"5px 8px",borderRadius:6,border:"1px solid var(--border)",
-                      background:"var(--surface-warm)",color:"var(--text)",fontSize:12,fontFamily:"inherit"}}/>
-                  {!rDate&&<span style={{fontSize:10,color:"var(--text-faint)"}}>비워두면 오늘</span>}
+              <div className="tag-input-row">
+                <input className="tag-input" value={rTagInput} onChange={e=>setRTagInput(e.target.value)}
+                  placeholder="태그 (쉼표로 구분, 예: 시간관리, 감정)"/>
+              </div>
+              {rTagInput.trim() && (
+                <div className="tag-preview">
+                  {parseTagInput(rTagInput).map(t=>(
+                    <span key={t} className="tag-preview-pill" style={{background:"var(--ocean-light)",color:"var(--ocean-dark)"}}>{t}</span>
+                  ))}
                 </div>
               )}
+              <div style={{marginTop:10}}>
+                {!rImage ? (
+                  <label className="image-add-btn">
+                    📷 사진 추가
+                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImageSelect(e,setRImage)}/>
+                  </label>
+                ) : (
+                  <div className="image-preview-wrap">
+                    <img className="image-preview" src={rImage} alt=""/>
+                    <button className="image-remove-btn" onClick={()=>setRImage(null)}>×</button>
+                  </div>
+                )}
+                {imgLoading && <span style={{fontSize:10,color:"var(--text-faint)",marginLeft:8}}>압축 중...</span>}
+              </div>
               <div style={{display:"flex",gap:8,marginTop:10}}>
-                <button className="btn-primary" style={{background:"var(--ocean)"}} onClick={addR}>{editingId?"수정 완료":"기록"}</button>
+                <button className="btn-primary" style={{background:"var(--ocean-dark)"}} onClick={addR}>{editingId?"수정 완료":"기록"}</button>
                 {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
               </div>
             </div>
@@ -940,7 +1223,7 @@ function DiaryApp({ user, onLogout }) {
           <div>
             <AISuggestions gEntries={gEntries} rEntries={rEntries} storage={storage}/>
             {gEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--rose)",marginBottom:12}}>감사 기록</div><Analytics entries={gEntries} type="gratitude"/></div>)}
-            {rEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--ocean)",marginBottom:12}}>돌아보기 기록</div><Analytics entries={rEntries} type="reflection"/></div>)}
+            {rEntries.length>0&&(<div style={{marginTop:18}}><div style={{fontSize:12,fontWeight:700,color:"var(--ocean-dark)",marginBottom:12}}>다짐 기록</div><Analytics entries={rEntries} type="reflection"/></div>)}
             {gEntries.length===0&&rEntries.length===0&&(<p style={{textAlign:"center",padding:48,color:"var(--text-faint)",fontSize:13}}>기록이 쌓이면 여기서 패턴을 볼 수 있어요</p>)}
           </div>
         )}
