@@ -44,25 +44,36 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 @keyframes spin { to{transform:rotate(360deg)} }
 .fade-in { animation:fadeIn 0.25s ease; }
 
+/* ── Icon Bar (backup buttons) ── */
+.icon-bar { display:flex; gap:6px; }
+.icon-btn {
+  width:30px; height:30px; border-radius:50%; border:1px solid var(--border);
+  background:var(--surface); color:var(--text-mid); font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+}
+
 /* ── Date Nav ── */
 .date-nav {
-  display:flex; align-items:center; justify-content:center; gap:14px;
-  margin-bottom:14px; padding:10px 8px;
+  display:flex; align-items:center;
+  margin-bottom:14px; padding:10px 10px;
   background:var(--surface); border-radius:12px; border:1px solid var(--border-soft);
 }
+.date-nav-spacer { flex:1; }
+.date-nav-center { display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.date-nav-today-wrap { flex:1; display:flex; justify-content:flex-end; }
 .date-nav-arrow {
-  width:28px; height:28px; border-radius:50%; border:1px solid var(--border);
-  background:var(--surface-warm); color:var(--text-mid); font-size:14px;
+  width:26px; height:26px; border-radius:50%; border:1px solid var(--border);
+  background:var(--surface-warm); color:var(--text-mid); font-size:13px;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
 .date-nav-arrow:disabled { opacity:0.3; cursor:default; }
-.date-nav-label { font-size:15px; font-weight:800; min-width:96px; text-align:center; }
+.date-nav-label { font-size:15px; font-weight:800; min-width:76px; text-align:center; }
 .date-nav-today {
   padding:5px 12px; border-radius:20px; border:1px solid var(--border);
   background:var(--surface-warm); color:var(--text-mid); font-size:11px; font-weight:600;
   flex-shrink:0;
 }
-.date-nav-today.is-today { opacity:0.4; }
+.date-nav-today.is-today { opacity:0.35; }
 
 /* ── Tag Input ── */
 .tag-input-row { display:flex; align-items:center; gap:6px; margin-top:8px; }
@@ -154,10 +165,17 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 }
 .input-label { font-size:11px; font-weight:600; color:var(--text-mid); display:block; margin-bottom:8px; }
 .input-textarea {
-  width:100%; padding:12px 14px; border-radius:8px;
-  border:1px solid var(--border); background:var(--surface-warm);
-  color:var(--text); font-size:14px; line-height:1.8;
+  width:100%; padding:6px 14px 6px 22px; border-radius:8px;
+  border:1px solid var(--border); color:var(--text); font-size:14px;
   resize:vertical;
+  line-height:27px;
+  background-color: var(--surface-warm);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(120,100,80,0.05) 1px, transparent 0),
+    repeating-linear-gradient(to bottom, transparent, transparent 26px, var(--border-soft) 26px, var(--border-soft) 27px),
+    linear-gradient(to right, transparent, transparent 11px, rgba(224,122,110,0.3) 11px, rgba(224,122,110,0.3) 12.5px, transparent 12.5px);
+  background-size: 5px 5px, 100% 27px, auto;
+  background-attachment: local, local, local;
 }
 .btn-primary {
   flex:1; padding:11px; border-radius:8px; border:none;
@@ -507,6 +525,9 @@ function SettingsModal({ storage, onClose, onFontChange }) {
   const [gFont, setGFont] = useState(storage.get("font_gratitude") || "cafe24");
   const [rFont, setRFont] = useState(storage.get("font_reflection") || "cafe24");
   const [saved, setSaved] = useState(false);
+  const usage = useMemo(()=>getStorageUsageBytes(storage._userId),[storage]);
+  const usageMB = (usage/1024/1024).toFixed(2);
+  const usagePct = Math.min((usage/(5*1024*1024))*100, 100);
 
   const save = () => {
     storage.set("apikey", apiKey);
@@ -559,6 +580,14 @@ function SettingsModal({ storage, onClose, onFontChange }) {
             fontFamily:FONTS.find(f=>f.id===rFont)?.family,fontSize:14,color:"var(--text)",lineHeight:1.6}}>
             미리보기: 내일은 더 잘할 수 있어
           </div>
+        </div>
+
+        <div style={{marginBottom:16}}>
+          <label className="modal-label">저장 용량</label>
+          <div className="storage-bar-track">
+            <div className="storage-bar-fill" style={{width:`${usagePct}%`, background: usagePct>80?"var(--rose)":"var(--sage)"}}/>
+          </div>
+          <div style={{fontSize:9,color:"var(--text-faint)",marginTop:3}}>{usageMB}MB 사용 중 (기기당 약 5MB 한도)</div>
         </div>
 
         <div className="modal-actions">
@@ -796,20 +825,22 @@ function DateNav({ date, setDate, color }) {
   const isToday = date === todayInput();
   return (
     <div className="date-nav">
-      <button className="date-nav-arrow" onClick={()=>setDate(shiftDateInput(date,-1))}>‹</button>
-      <span className="date-nav-label" style={{color}}>{fmtNavLabel(date)}</span>
-      <button className="date-nav-arrow" disabled={isToday} onClick={()=>setDate(shiftDateInput(date,1))}>›</button>
-      <button className={`date-nav-today ${isToday?"is-today":""}`} onClick={()=>setDate(todayInput())}>오늘</button>
+      <div className="date-nav-spacer" />
+      <div className="date-nav-center">
+        <button className="date-nav-arrow" onClick={()=>setDate(shiftDateInput(date,-1))}>‹</button>
+        <span className="date-nav-label" style={{color}}>{fmtNavLabel(date)}</span>
+        <button className="date-nav-arrow" disabled={isToday} onClick={()=>setDate(shiftDateInput(date,1))}>›</button>
+      </div>
+      <div className="date-nav-today-wrap">
+        <button className={`date-nav-today ${isToday?"is-today":""}`} onClick={()=>setDate(todayInput())}>오늘</button>
+      </div>
     </div>
   );
 }
 
-/* ═══════════════ BACKUP BAR ═══════════════ */
+/* ═══════════════ BACKUP BAR (icon only) ═══════════════ */
 function BackupBar({ storage, userName, onImported }) {
   const fileRef = useRef(null);
-  const [usage, setUsage] = useState(0);
-
-  useEffect(()=>{ setUsage(getStorageUsageBytes(storage._userId)); },[storage]);
 
   const handleExport = () => exportBackup(storage, userName);
   const handleImportClick = () => fileRef.current?.click();
@@ -824,22 +855,11 @@ function BackupBar({ storage, userName, onImported }) {
     e.target.value = "";
   };
 
-  const usageMB = (usage/1024/1024).toFixed(2);
-  const usagePct = Math.min((usage/(5*1024*1024))*100, 100);
-
   return (
-    <div style={{marginBottom:14}}>
-      <div className="backup-bar">
-        <button className="backup-btn" onClick={handleExport}>⬇ 백업 다운로드</button>
-        <button className="backup-btn" onClick={handleImportClick}>⬆ 백업 불러오기</button>
-        <input ref={fileRef} type="file" accept="application/json" style={{display:"none"}} onChange={handleFile}/>
-      </div>
-      <div style={{padding:"0 4px"}}>
-        <div className="storage-bar-track">
-          <div className="storage-bar-fill" style={{width:`${usagePct}%`, background: usagePct>80?"var(--rose)":"var(--sage)"}}/>
-        </div>
-        <div style={{fontSize:9,color:"var(--text-faint)",marginTop:3}}>저장 용량 {usageMB}MB 사용 중 (기기당 약 5MB 한도)</div>
-      </div>
+    <div className="icon-bar">
+      <button className="icon-btn" title="백업 다운로드" onClick={handleExport}>⬇</button>
+      <button className="icon-btn" title="백업 불러오기" onClick={handleImportClick}>⬆</button>
+      <input ref={fileRef} type="file" accept="application/json" style={{display:"none"}} onChange={handleFile}/>
     </div>
   );
 }
@@ -1083,10 +1103,10 @@ function DiaryApp({ user, onLogout }) {
       {/* Header */}
       <header className="header">
         <div className="header-left">
-          <h1>마음 일기</h1>
-          <p>{user.name}님의 공간</p>
+          <img src="title.png" alt="마음 일기" style={{height:36}}/>
         </div>
-        <div className="header-right" style={{position:"relative"}}>
+        <div className="header-right" style={{position:"relative",display:"flex",alignItems:"center",gap:8}}>
+          <BackupBar storage={storage} userName={user.name} onImported={handleImported}/>
           <img className="avatar" src={user.picture} alt="" referrerPolicy="no-referrer"
             onClick={()=>setShowMenu(!showMenu)} />
           {showMenu && (
@@ -1103,9 +1123,6 @@ function DiaryApp({ user, onLogout }) {
           )}
         </div>
       </header>
-
-      {/* Backup bar — visible on every tab */}
-      <BackupBar storage={storage} userName={user.name} onImported={handleImported}/>
 
       {/* Tabs */}
       <nav className="tabs">
