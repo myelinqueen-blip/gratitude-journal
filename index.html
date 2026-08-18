@@ -49,7 +49,7 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 .icon-btn {
   width:30px; height:30px; border-radius:50%; border:1px solid var(--border);
   background:var(--surface); color:var(--text-mid); font-size:13px;
-  display:flex; align-items:center; justify-content:center;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer;
 }
 
 /* ── Date Nav ── */
@@ -133,7 +133,8 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 /* ── App Shell ── */
 .app { max-width:500px; margin:0 auto; padding:0 16px 80px; }
 .header { padding:24px 0 16px; display:flex; align-items:center; justify-content:space-between; }
-.header-left h1 { font-size:18px; font-weight:700; letter-spacing:-0.03em; }
+.header-left { flex:1; min-width:0; }
+.title-img { height:56px; width:auto; max-width:100%; object-fit:contain; object-position:left center; display:block; }
 .header-left p { font-size:11px; color:var(--text-faint); margin-top:3px; }
 .header-right { display:flex; align-items:center; gap:10px; }
 .avatar { width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border); cursor:pointer; }
@@ -165,16 +166,16 @@ textarea:focus { outline:none; border-color:var(--gold) !important; }
 }
 .input-label { font-size:11px; font-weight:600; color:var(--text-mid); display:block; margin-bottom:8px; }
 .input-textarea {
-  width:100%; padding:6px 14px 6px 22px; border-radius:8px;
+  width:100%; padding:8px 14px 8px 22px; border-radius:8px;
   border:1px solid var(--border); color:var(--text); font-size:14px;
   resize:vertical;
-  line-height:27px;
+  line-height:30px;
   background-color: var(--surface-warm);
   background-image:
     radial-gradient(circle at 1px 1px, rgba(120,100,80,0.05) 1px, transparent 0),
-    repeating-linear-gradient(to bottom, transparent, transparent 26px, var(--border-soft) 26px, var(--border-soft) 27px),
+    repeating-linear-gradient(to bottom, transparent, transparent 29px, var(--border-soft) 29px, var(--border-soft) 30px),
     linear-gradient(to right, transparent, transparent 11px, rgba(224,122,110,0.3) 11px, rgba(224,122,110,0.3) 12.5px, transparent 12.5px);
-  background-size: 5px 5px, 100% 27px, auto;
+  background-size: 5px 5px, 100% 30px, auto;
   background-attachment: local, local, local;
 }
 .btn-primary {
@@ -1103,7 +1104,7 @@ function DiaryApp({ user, onLogout }) {
       {/* Header */}
       <header className="header">
         <div className="header-left">
-          <img src="title.png" alt="마음 일기" style={{height:36}}/>
+          <img src="title.png" alt="마음 일기" className="title-img"/>
         </div>
         <div className="header-right" style={{position:"relative",display:"flex",alignItems:"center",gap:8}}>
           <BackupBar storage={storage} userName={user.name} onImported={handleImported}/>
@@ -1147,6 +1148,17 @@ function DiaryApp({ user, onLogout }) {
               <div className="tag-input-row">
                 <input className="tag-input" value={gTagInput} onChange={e=>setGTagInput(e.target.value)}
                   placeholder="태그 (쉼표로 구분, 예: 가족, 감사, 여행)"/>
+                {!gImage ? (
+                  <label className="icon-btn" title="사진 추가">
+                    📷
+                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImageSelect(e,setGImage)}/>
+                  </label>
+                ) : (
+                  <div className="image-preview-wrap" style={{margin:0,flexShrink:0}}>
+                    <img className="image-preview" src={gImage} alt="" style={{width:30,height:30}}/>
+                    <button className="image-remove-btn" onClick={()=>setGImage(null)}>×</button>
+                  </div>
+                )}
               </div>
               {gTagInput.trim() && (
                 <div className="tag-preview">
@@ -1155,20 +1167,7 @@ function DiaryApp({ user, onLogout }) {
                   ))}
                 </div>
               )}
-              <div style={{marginTop:10}}>
-                {!gImage ? (
-                  <label className="image-add-btn">
-                    📷 사진 추가
-                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImageSelect(e,setGImage)}/>
-                  </label>
-                ) : (
-                  <div className="image-preview-wrap">
-                    <img className="image-preview" src={gImage} alt=""/>
-                    <button className="image-remove-btn" onClick={()=>setGImage(null)}>×</button>
-                  </div>
-                )}
-                {imgLoading && <span style={{fontSize:10,color:"var(--text-faint)",marginLeft:8}}>압축 중...</span>}
-              </div>
+              {imgLoading && <span style={{fontSize:10,color:"var(--text-faint)"}}>사진 압축 중...</span>}
               <div style={{display:"flex",gap:8,marginTop:10}}>
                 <button className="btn-primary" style={{background:"var(--rose)"}} onClick={addG}>{editingId?"수정 완료":"기록"}</button>
                 {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
@@ -1203,6 +1202,17 @@ function DiaryApp({ user, onLogout }) {
               <div className="tag-input-row">
                 <input className="tag-input" value={rTagInput} onChange={e=>setRTagInput(e.target.value)}
                   placeholder="태그 (쉼표로 구분, 예: 시간관리, 감정)"/>
+                {!rImage ? (
+                  <label className="icon-btn" title="사진 추가">
+                    📷
+                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImageSelect(e,setRImage)}/>
+                  </label>
+                ) : (
+                  <div className="image-preview-wrap" style={{margin:0,flexShrink:0}}>
+                    <img className="image-preview" src={rImage} alt="" style={{width:30,height:30}}/>
+                    <button className="image-remove-btn" onClick={()=>setRImage(null)}>×</button>
+                  </div>
+                )}
               </div>
               {rTagInput.trim() && (
                 <div className="tag-preview">
@@ -1211,20 +1221,7 @@ function DiaryApp({ user, onLogout }) {
                   ))}
                 </div>
               )}
-              <div style={{marginTop:10}}>
-                {!rImage ? (
-                  <label className="image-add-btn">
-                    📷 사진 추가
-                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImageSelect(e,setRImage)}/>
-                  </label>
-                ) : (
-                  <div className="image-preview-wrap">
-                    <img className="image-preview" src={rImage} alt=""/>
-                    <button className="image-remove-btn" onClick={()=>setRImage(null)}>×</button>
-                  </div>
-                )}
-                {imgLoading && <span style={{fontSize:10,color:"var(--text-faint)",marginLeft:8}}>압축 중...</span>}
-              </div>
+              {imgLoading && <span style={{fontSize:10,color:"var(--text-faint)"}}>사진 압축 중...</span>}
               <div style={{display:"flex",gap:8,marginTop:10}}>
                 <button className="btn-primary" style={{background:"var(--ocean-dark)"}} onClick={addR}>{editingId?"수정 완료":"기록"}</button>
                 {editingId&&<button className="btn-secondary" onClick={cancel}>취소</button>}
